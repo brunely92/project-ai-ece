@@ -1,0 +1,17 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.sqlite
+*.db
+data/raw/*.csv
+!data/raw/.gitkeep
+.vscode/
+.idea/
+.DS_Store
+models/
+*.bin
+*.safetensors
+*.log
+.ipynb_checkpoints/
