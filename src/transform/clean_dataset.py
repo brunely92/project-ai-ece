@@ -71,17 +71,17 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     """Applique toutes les règles de nettoyage."""
     stats = {"initial": len(df)}
 
-    # 1. Supprimer les doublons exacts
-    df = df.drop_duplicates(subset=["review_text"])
-    stats["apres_dedup"] = len(df)
-
-    # 2. Supprimer les lignes sans texte
+    # 1. Supprimer les lignes sans texte
     df = df.dropna(subset=["review_text"])
     df = df[df["review_text"].str.strip() != ""]
     stats["apres_nulls"] = len(df)
 
-    # 3. Normaliser le texte
+    # 2. Normaliser le texte (AVANT dédoublonnage pour détecter les doublons HTML)
     df["review_text"] = df["review_text"].apply(clean_text)
+
+    # 3. Supprimer les doublons (après nettoyage pour capturer les doublons masqués)
+    df = df.drop_duplicates(subset=["review_text"])
+    stats["apres_dedup"] = len(df)
 
     # 4. Supprimer les avis trop courts (< 20 caractères)
     df = df[df["review_text"].str.len() >= 20]
@@ -102,8 +102,8 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     # Rapport de nettoyage
     print("\n--- Rapport de nettoyage ---")
     print(f"  Lignes initiales     : {stats['initial']}")
-    print(f"  Après dé-doublonnage : {stats['apres_dedup']} (-{stats['initial'] - stats['apres_dedup']})")
-    print(f"  Après suppression nulls : {stats['apres_nulls']} (-{stats['apres_dedup'] - stats['apres_nulls']})")
+    print(f"  Après suppression nulls : {stats['apres_nulls']} (-{stats['initial'] - stats['apres_nulls']})")
+    print(f"  Après nettoyage + dédoublonnage : {stats['apres_dedup']} (-{stats['apres_nulls'] - stats['apres_dedup']})")
     print(f"  Après filtre longueur : {stats['apres_court']} (-{stats['apres_nulls'] - stats['apres_court']})")
     print(f"  Dataset final        : {stats['final']} lignes")
     print(f"  Colonnes             : {list(df.columns)}")
