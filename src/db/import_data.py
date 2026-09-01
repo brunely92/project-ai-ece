@@ -71,6 +71,10 @@ def import_sources(conn):
         ("api_omdb", "api", "https://www.omdbapi.com/", "API OMDB enrichissement films"),
         ("api_tmdb", "api", "https://api.themoviedb.org/3/movie/popular", "API TMDB films populaires"),
         ("scraping_imdb", "scraping", "https://www.imdb.com/title/*/reviews/", "Scraping reviews IMDB"),
+        ("sst2_stanford", "api", "https://huggingface.co/datasets/stanfordnlp/sst2", "SST-2 Stanford 67K phrases (Socher et al. 2013)"),
+        ("rotten_tomatoes", "api", "https://huggingface.co/datasets/cornell-movie-review-data/rotten_tomatoes", "Rotten Tomatoes Cornell 10K (Pang & Lee 2005)"),
+        ("amazon_reviews", "api", "https://huggingface.co/datasets/amazon_polarity", "Amazon Reviews 50K subset (McAuley & Leskovec 2013)"),
+        ("yelp_reviews", "api", "https://huggingface.co/datasets/yelp_polarity", "Yelp Reviews 50K subset (Zhang, Zhao & LeCun 2015)"),
     ]
     for name, stype, url, desc in sources:
         try:

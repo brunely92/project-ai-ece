@@ -57,7 +57,26 @@ def load_all_sources() -> pd.DataFrame:
         frames.append(df[["review_text", "sentiment", "source", "source_file"]])
         print(f"[OK] Rotten Tomatoes   : {len(df):>6d} lignes")
 
-    # Source 4 : OMDB API (plots enrichissement)
+
+    # Source 4 : Amazon Reviews — ~50 000 reviews
+    amazon_file = RAW_DIR / "amazon_reviews_raw.csv"
+    if amazon_file.exists():
+        df = pd.read_csv(amazon_file)
+        df["source"] = "amazon_reviews"
+        df["source_file"] = str(amazon_file)
+        frames.append(df[["review_text", "sentiment", "source", "source_file"]])
+        print(f"[OK] Amazon Reviews    : {len(df):>6d} lignes")
+
+    # Source 5 : Yelp Reviews — ~50 000 reviews
+    yelp_file = RAW_DIR / "yelp_reviews_raw.csv"
+    if yelp_file.exists():
+        df = pd.read_csv(yelp_file)
+        df["source"] = "yelp_reviews"
+        df["source_file"] = str(yelp_file)
+        frames.append(df[["review_text", "sentiment", "source", "source_file"]])
+        print(f"[OK] Yelp Reviews      : {len(df):>6d} lignes")
+
+    # Source 6 : OMDB API (plots enrichissement)
     omdb_file = RAW_DIR / "omdb_movies_raw.csv"
     if omdb_file.exists():
         df = pd.read_csv(omdb_file)

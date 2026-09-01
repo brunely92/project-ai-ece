@@ -118,3 +118,24 @@ python -m src.db.import_films
 # Prédictions batch (500 avis par défaut)
 python -m src.model.batch_predict
 ```
+
+## Sources de données (228K+ lignes)
+
+| Source | Volume | Référence |
+|--------|--------|-----------|
+| IMDB Kaggle | 50 000 | Maas et al., 2011 |
+| SST-2 Stanford | 67 000 | Socher et al., 2013 |
+| Rotten Tomatoes | 10 600 | Pang & Lee, 2005 |
+| Amazon Reviews | 50 000 | McAuley & Leskovec, 2013 |
+| Yelp Reviews | 50 000 | Zhang, Zhao & LeCun, 2015 |
+
+```bash
+# Collecte complète
+python -m src.collect.collect_csv        # IMDB Kaggle
+python -m src.collect.collect_sst2       # SST-2 Stanford
+python -m src.collect.collect_rottentomatoes  # Rotten Tomatoes
+python -m src.collect.collect_amazon     # Amazon 50K
+python -m src.collect.collect_yelp       # Yelp 50K
+python -m src.collect.collect_omdb       # OMDB enrichissement
+python -m src.collect.collect_scraping   # Scraping IMDB
+```
