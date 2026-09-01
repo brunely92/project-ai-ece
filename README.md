@@ -108,3 +108,13 @@ Python 3.11 · FastAPI · SQLite · HuggingFace Transformers · Streamlit · pyt
 ## Licence
 
 Projet académique — ECE × Simplon.co 2026
+
+## Enrichissement des données
+
+```bash
+# Importer les films TMDB et lier aux avis
+python -m src.db.import_films
+
+# Prédictions batch (500 avis par défaut)
+python -m src.model.batch_predict
+```
