@@ -1,17 +1,15 @@
 """
-C5 — API REST de mise à disposition des données
-C9 — API exposant le modèle d'intelligence artificielle
-
-Framework : FastAPI
-Auth : API key via header x-api-key
-Documentation : OpenAPI auto (/docs)
+C5/C9 — API REST complète
+Endpoints données + modèle IA + monitoring + batch + comparaison modèles
 """
 import os
 import sqlite3
 import time
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from collections import Counter
 
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.security import APIKeyHeader
@@ -20,31 +18,40 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Configuration ──
 DB_PATH = Path(os.getenv("DATABASE_PATH", "data/movies_reviews.sqlite"))
 API_KEY = os.getenv("API_SECRET_KEY", "dev-key-change-me")
 
-# ── App FastAPI ──
 app = FastAPI(
-    title="API Analyse de Sentiment — Avis de Films",
-    description="API REST pour accéder aux données et prédire le sentiment d'avis de films.",
-    version="1.0.0",
+    title="SentimentFlick — API Analyse de Sentiment",
+    description=(
+        "API REST pour l'analyse de sentiment d'avis de films.\n\n"
+        "**Fonctionnalités :**\n"
+        "- Accès aux données (avis, films, statistiques)\n"
+        "- Prédiction de sentiment par IA (HuggingFace DistilBERT)\n"
+        "- Analyse batch de plusieurs avis\n"
+        "- Comparaison multi-modèles (DistilBERT vs TextBlob)\n"
+        "- Métriques de monitoring\n\n"
+        "**Authentification :** header `x-api-key`"
+    ),
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# ── Auth ──
+# Intégrer le middleware de monitoring
+from src.api.middleware import MonitoringMiddleware
+app.add_middleware(MonitoringMiddleware)
+
 api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 
 
 def verify_api_key(api_key: str = Depends(api_key_header)):
-    """Vérifie la clé API fournie dans le header x-api-key."""
     if api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Clé API invalide ou manquante")
     return api_key
 
 
-# ── DB helper ──
 def get_db():
-    """Retourne une connexion SQLite."""
     if not DB_PATH.exists():
         raise HTTPException(status_code=500, detail="Base de données introuvable")
     conn = sqlite3.connect(DB_PATH)
@@ -53,9 +60,12 @@ def get_db():
 
 
 # ── Modèles Pydantic ──
+
 class PredictRequest(BaseModel):
     text: str = Field(..., min_length=5, max_length=5000, description="Texte de l'avis à analyser")
 
+class BatchPredictRequest(BaseModel):
+    texts: list[str] = Field(..., min_length=1, max_length=20, description="Liste de textes (max 20)")
 
 class PredictResponse(BaseModel):
     sentiment: str
@@ -63,25 +73,67 @@ class PredictResponse(BaseModel):
     model: str
     processing_time_ms: float
 
-
-class ReviewOut(BaseModel):
-    id: int
-    review_text: str
-    sentiment: Optional[str]
-    source: str
+class CompareResponse(BaseModel):
+    text: str
+    models: dict
 
 
-# ── C5 : Endpoints données ──
+# ── Modèles IA (lazy loading) ──
+
+_hf_model = None
+_textblob_available = None
+
+
+def get_hf_model():
+    global _hf_model
+    if _hf_model is None:
+        from transformers import pipeline
+        model_name = os.getenv("MODEL_NAME", "distilbert-base-uncased-finetuned-sst-2-english")
+        _hf_model = pipeline("sentiment-analysis", model=model_name, truncation=True, max_length=512)
+        print(f"[OK] Modèle HuggingFace chargé : {model_name}")
+    return _hf_model
+
+
+def get_textblob_prediction(text: str) -> dict:
+    """Prédiction avec TextBlob (modèle de comparaison)."""
+    global _textblob_available
+    if _textblob_available is None:
+        try:
+            from textblob import TextBlob
+            _textblob_available = True
+        except ImportError:
+            _textblob_available = False
+
+    if not _textblob_available:
+        return {"sentiment": "unavailable", "score": 0, "model": "TextBlob (non installé)"}
+
+    from textblob import TextBlob
+    blob = TextBlob(text)
+    polarity = blob.sentiment.polarity
+    sentiment = "positive" if polarity >= 0 else "negative"
+    score = abs(polarity)
+    return {"sentiment": sentiment, "score": round(score, 4), "model": "TextBlob"}
+
+
+# ══════════════════════════════════════════
+# ENDPOINTS DONNÉES (C5)
+# ══════════════════════════════════════════
 
 @app.get("/health", tags=["Système"])
 def health_check():
     """Vérifie que l'API et la base de données sont opérationnelles."""
     try:
         conn = get_db()
-        cursor = conn.execute("SELECT COUNT(*) FROM reviews")
-        count = cursor.fetchone()[0]
+        reviews = conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0]
+        films = conn.execute("SELECT COUNT(*) FROM films").fetchone()[0]
+        predictions = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
         conn.close()
-        return {"status": "ok", "database": "connected", "reviews_count": count}
+        return {
+            "status": "ok",
+            "database": "connected",
+            "tables": {"reviews": reviews, "films": films, "predictions": predictions},
+            "timestamp": datetime.now().isoformat(),
+        }
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
@@ -90,41 +142,68 @@ def health_check():
 def list_reviews(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    sentiment: Optional[str] = Query(default=None, description="Filtrer par sentiment"),
 ):
-    """Liste les avis avec pagination."""
+    """Liste les avis avec pagination et filtre optionnel."""
     conn = get_db()
-    cursor = conn.execute(
-        "SELECT id, review_text, sentiment, source FROM reviews LIMIT ? OFFSET ?",
-        (limit, offset),
-    )
+    query = "SELECT id, review_text, sentiment, source, film_id FROM reviews"
+    params = []
+    if sentiment:
+        query += " WHERE sentiment = ?"
+        params.append(sentiment)
+    query += " LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+    cursor = conn.execute(query, params)
     reviews = [dict(row) for row in cursor.fetchall()]
+    total = conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0]
     conn.close()
-    return {"count": len(reviews), "offset": offset, "reviews": reviews}
+    return {"total": total, "count": len(reviews), "offset": offset, "reviews": reviews}
 
 
 @app.get("/reviews/{review_id}", tags=["Données"], dependencies=[Depends(verify_api_key)])
 def get_review(review_id: int):
-    """Récupère un avis par son ID."""
+    """Récupère un avis avec ses prédictions et son film associé."""
     conn = get_db()
-    cursor = conn.execute(
-        "SELECT id, review_text, sentiment, source FROM reviews WHERE id = ?",
+    review = conn.execute(
+        "SELECT id, review_text, sentiment, source, film_id FROM reviews WHERE id = ?",
         (review_id,),
-    )
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
+    ).fetchone()
+    if not review:
+        conn.close()
         raise HTTPException(status_code=404, detail=f"Avis #{review_id} introuvable")
-    return dict(row)
+
+    result = dict(review)
+
+    # Ajouter les prédictions
+    preds = conn.execute(
+        "SELECT predicted_sentiment, confidence_score, model_version, predicted_at FROM predictions WHERE review_id = ?",
+        (review_id,),
+    ).fetchall()
+    result["predictions"] = [dict(p) for p in preds]
+
+    # Ajouter le film si lié
+    if result.get("film_id"):
+        film = conn.execute("SELECT title, vote_average, genre_ids FROM films WHERE id = ?", (result["film_id"],)).fetchone()
+        result["film"] = dict(film) if film else None
+
+    conn.close()
+    return result
 
 
 @app.get("/search", tags=["Données"], dependencies=[Depends(verify_api_key)])
-def search_reviews(q: str = Query(..., min_length=2, description="Mot-clé de recherche")):
-    """Recherche des avis contenant un mot-clé."""
+def search_reviews(
+    q: str = Query(..., min_length=2, description="Mot-clé de recherche"),
+    sentiment: Optional[str] = Query(default=None),
+):
+    """Recherche dans les avis avec filtre sentiment optionnel."""
     conn = get_db()
-    cursor = conn.execute(
-        "SELECT id, review_text, sentiment, source FROM reviews WHERE review_text LIKE ? LIMIT 20",
-        (f"%{q}%",),
-    )
+    query = "SELECT id, review_text, sentiment, source FROM reviews WHERE review_text LIKE ?"
+    params = [f"%{q}%"]
+    if sentiment:
+        query += " AND sentiment = ?"
+        params.append(sentiment)
+    query += " LIMIT 20"
+    cursor = conn.execute(query, params)
     reviews = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return {"query": q, "count": len(reviews), "reviews": reviews}
@@ -132,62 +211,88 @@ def search_reviews(q: str = Query(..., min_length=2, description="Mot-clé de re
 
 @app.get("/stats", tags=["Données"], dependencies=[Depends(verify_api_key)])
 def get_stats():
-    """Statistiques globales du dataset."""
+    """Statistiques globales enrichies."""
     conn = get_db()
-
     total = conn.execute("SELECT COUNT(*) FROM reviews").fetchone()[0]
-    by_sentiment = conn.execute(
-        "SELECT sentiment, COUNT(*) as nb FROM reviews WHERE sentiment IS NOT NULL GROUP BY sentiment"
-    ).fetchall()
-    by_source = conn.execute(
-        "SELECT source, COUNT(*) as nb FROM reviews GROUP BY source"
-    ).fetchall()
-    avg_len = conn.execute(
-        "SELECT ROUND(AVG(LENGTH(review_text)), 0) FROM reviews"
-    ).fetchone()[0]
+    by_sent = conn.execute("SELECT sentiment, COUNT(*) FROM reviews WHERE sentiment IS NOT NULL GROUP BY sentiment").fetchall()
+    by_src = conn.execute("SELECT source, COUNT(*) FROM reviews GROUP BY source").fetchall()
+    avg_len = conn.execute("SELECT ROUND(AVG(LENGTH(review_text)), 0) FROM reviews").fetchone()[0]
+    nb_films = conn.execute("SELECT COUNT(*) FROM films").fetchone()[0]
+    nb_linked = conn.execute("SELECT COUNT(*) FROM reviews WHERE film_id IS NOT NULL").fetchone()[0]
+    nb_preds = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+
+    accuracy = None
+    if nb_preds > 0:
+        accuracy = conn.execute(
+            """SELECT ROUND(SUM(CASE WHEN r.sentiment = p.predicted_sentiment THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)
+               FROM reviews r JOIN predictions p ON r.id = p.review_id WHERE r.sentiment IS NOT NULL"""
+        ).fetchone()[0]
 
     conn.close()
     return {
         "total_reviews": total,
-        "by_sentiment": {row["sentiment"]: row["nb"] for row in by_sentiment},
-        "by_source": {row["source"]: row["nb"] for row in by_source},
+        "by_sentiment": {r[0]: r[1] for r in by_sent},
+        "by_source": {r[0]: r[1] for r in by_src},
         "avg_review_length": avg_len,
+        "total_films": nb_films,
+        "reviews_linked_to_films": nb_linked,
+        "total_predictions": nb_preds,
+        "model_accuracy": accuracy,
     }
 
 
-# ── C9 : Endpoint modèle IA ──
+# ══════════════════════════════════════════
+# ENDPOINTS FILMS (C1/C4)
+# ══════════════════════════════════════════
 
-# Chargement lazy du modèle
-_model = None
+@app.get("/films", tags=["Films"], dependencies=[Depends(verify_api_key)])
+def list_films(limit: int = Query(default=20, ge=1, le=100)):
+    """Liste les films avec nombre d'avis et sentiment agrégé."""
+    conn = get_db()
+    films = conn.execute(
+        """SELECT f.id, f.title, f.vote_average, f.genre_ids, f.release_date,
+                  COUNT(r.id) as nb_reviews,
+                  ROUND(SUM(CASE WHEN r.sentiment='positive' THEN 1.0 ELSE 0.0 END) / NULLIF(COUNT(r.id),0) * 100, 1) as pct_positive
+           FROM films f
+           LEFT JOIN reviews r ON f.id = r.film_id
+           GROUP BY f.id
+           ORDER BY nb_reviews DESC
+           LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return {"count": len(films), "films": [dict(f) for f in films]}
 
 
-def get_model():
-    """Charge le modèle HuggingFace une seule fois (singleton)."""
-    global _model
-    if _model is None:
-        try:
-            from transformers import pipeline
-            model_name = os.getenv("MODEL_NAME", "distilbert-base-uncased-finetuned-sst-2-english")
-            _model = pipeline("sentiment-analysis", model=model_name)
-            print(f"[OK] Modèle chargé : {model_name}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erreur chargement modèle : {e}")
-    return _model
+@app.get("/films/{film_id}", tags=["Films"], dependencies=[Depends(verify_api_key)])
+def get_film(film_id: int):
+    """Détail d'un film avec ses avis."""
+    conn = get_db()
+    film = conn.execute("SELECT * FROM films WHERE id = ?", (film_id,)).fetchone()
+    if not film:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Film #{film_id} introuvable")
+    reviews = conn.execute(
+        "SELECT id, review_text, sentiment FROM reviews WHERE film_id = ? LIMIT 10",
+        (film_id,),
+    ).fetchall()
+    conn.close()
+    return {"film": dict(film), "reviews": [dict(r) for r in reviews]}
 
+
+# ══════════════════════════════════════════
+# ENDPOINTS IA (C9)
+# ══════════════════════════════════════════
 
 @app.post("/predict", response_model=PredictResponse, tags=["IA"], dependencies=[Depends(verify_api_key)])
 def predict_sentiment(request: PredictRequest):
-    """
-    Prédit le sentiment d'un texte (positif/négatif).
-    Utilise le modèle HuggingFace distilbert-base-uncased-finetuned-sst-2-english.
-    """
-    # Validation type (C21 - prévention incident)
+    """Prédit le sentiment d'un texte (positif/négatif)."""
     if not isinstance(request.text, str):
         raise HTTPException(status_code=422, detail="Le champ 'text' doit être une chaîne de caractères")
 
     start = time.time()
-    model = get_model()
-    result = model(request.text[:512])[0]  # Tronquer à 512 tokens
+    model = get_hf_model()
+    result = model(request.text[:512])[0]
     elapsed = (time.time() - start) * 1000
 
     return PredictResponse(
@@ -196,3 +301,107 @@ def predict_sentiment(request: PredictRequest):
         model=os.getenv("MODEL_NAME", "distilbert-base-uncased-finetuned-sst-2-english"),
         processing_time_ms=round(elapsed, 2),
     )
+
+
+@app.post("/predict/batch", tags=["IA"], dependencies=[Depends(verify_api_key)])
+def predict_batch(request: BatchPredictRequest):
+    """Prédit le sentiment de plusieurs textes en un appel (max 20)."""
+    model = get_hf_model()
+    start = time.time()
+    results = model([t[:512] for t in request.texts])
+    elapsed = (time.time() - start) * 1000
+
+    predictions = []
+    for text, result in zip(request.texts, results):
+        predictions.append({
+            "text": text[:100] + "..." if len(text) > 100 else text,
+            "sentiment": result["label"].lower(),
+            "score": round(result["score"], 4),
+        })
+
+    return {
+        "count": len(predictions),
+        "processing_time_ms": round(elapsed, 2),
+        "predictions": predictions,
+    }
+
+
+@app.post("/predict/compare", tags=["IA"], dependencies=[Depends(verify_api_key)])
+def compare_models(request: PredictRequest):
+    """Compare la prédiction de HuggingFace vs TextBlob sur le même texte."""
+    # HuggingFace
+    start = time.time()
+    hf_model = get_hf_model()
+    hf_result = hf_model(request.text[:512])[0]
+    hf_time = (time.time() - start) * 1000
+
+    # TextBlob
+    start = time.time()
+    tb_result = get_textblob_prediction(request.text)
+    tb_time = (time.time() - start) * 1000
+
+    return {
+        "text": request.text[:200],
+        "models": {
+            "huggingface_distilbert": {
+                "sentiment": hf_result["label"].lower(),
+                "score": round(hf_result["score"], 4),
+                "time_ms": round(hf_time, 2),
+            },
+            "textblob": {
+                "sentiment": tb_result["sentiment"],
+                "score": tb_result["score"],
+                "time_ms": round(tb_time, 2),
+            },
+        },
+        "agreement": hf_result["label"].lower() == tb_result["sentiment"],
+    }
+
+
+# ══════════════════════════════════════════
+# ENDPOINTS MONITORING (C20)
+# ══════════════════════════════════════════
+
+@app.get("/monitoring/metrics", tags=["Monitoring"], dependencies=[Depends(verify_api_key)])
+def get_metrics():
+    """Retourne les métriques du modèle et de l'API."""
+    conn = get_db()
+
+    nb_preds = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+    if nb_preds == 0:
+        conn.close()
+        return {"status": "no_predictions", "message": "Lancez batch_predict.py d'abord"}
+
+    accuracy = conn.execute(
+        """SELECT ROUND(SUM(CASE WHEN r.sentiment = p.predicted_sentiment THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+           FROM reviews r JOIN predictions p ON r.id = p.review_id WHERE r.sentiment IS NOT NULL"""
+    ).fetchone()[0]
+
+    avg_conf = conn.execute("SELECT ROUND(AVG(confidence_score), 4) FROM predictions").fetchone()[0]
+    min_conf = conn.execute("SELECT ROUND(MIN(confidence_score), 4) FROM predictions").fetchone()[0]
+
+    low_conf = conn.execute("SELECT COUNT(*) FROM predictions WHERE confidence_score < 0.6").fetchone()[0]
+
+    confusion = conn.execute(
+        """SELECT r.sentiment, p.predicted_sentiment, COUNT(*)
+           FROM reviews r JOIN predictions p ON r.id = p.review_id
+           WHERE r.sentiment IS NOT NULL
+           GROUP BY r.sentiment, p.predicted_sentiment"""
+    ).fetchall()
+
+    conn.close()
+
+    matrix = {}
+    for true_label, pred_label, count in confusion:
+        if true_label not in matrix:
+            matrix[true_label] = {}
+        matrix[true_label][pred_label] = count
+
+    return {
+        "total_predictions": nb_preds,
+        "accuracy_pct": accuracy,
+        "avg_confidence": avg_conf,
+        "min_confidence": min_conf,
+        "low_confidence_count": low_conf,
+        "confusion_matrix": matrix,
+    }
