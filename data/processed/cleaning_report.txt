@@ -1,18 +1,20 @@
-============================================================
+======================================================================
 RAPPORT DE NETTOYAGE DÉTAILLÉ
-============================================================
+======================================================================
 
-  Lignes initiales         : 75
-  Sources initiales        : {'csv_kaggle': 50, 'scraping_imdb': 15, 'api_omdb': 10}
-  Après suppression nulls  : 75 (-0)
-  Après dédoublonnage      : 75 (-0)
-  Après filtre longueur    : 75 (-0)
-  Non-anglais supprimés    : 16
-  Après filtre langue      : 59 (-16)
-  Dataset final            : 52 lignes
+  Lignes initiales           :       75
+  Sources initiales          : {'csv_kaggle_imdb': 50, 'scraping_imdb': 15, 'api_omdb': 10}
+  Après suppression nulls    :       75 (-0)
+  Après dédoublonnage        :       75 (-0)
+  Après filtre longueur      :       75 (-0)
+  Non-anglais supprimés      :        5
+  Après filtre langue        :       70
+  Dataset final              :       59 lignes
 
-  Sources finales          : {'csv_kaggle': 39, 'scraping_imdb': 13}
-  Sentiments               : {'positive': 29, 'negative': 23}
-  Score qualité moyen      : 64.0/100
-  Avis basse qualité (<30) : 0
-============================================================
+  Sources finales            : {'csv_kaggle_imdb': 46, 'scraping_imdb': 13}
+  Sentiments                 : {'positive': 33, 'negative': 26}
+  Avis labellisés            :       59
+  Avis non labellisés        :        0
+  Score qualité moyen        : 63.4/100
+  Avis basse qualité (<30)   :        0
+======================================================================
