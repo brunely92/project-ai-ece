@@ -1,51 +1,53 @@
-id,review_text,sentiment,source
-1,"Such a refreshing take on the genre. Original, clever, and deeply satisfying.",positive,csv_imdb
-2,The characters are one-dimensional and impossible to care about.,negative,csv_imdb
-3,The acting was wooden and the dialogue was cringe-worthy. Very poor effort.,negative,csv_imdb
-4,The director clearly had no vision for this project. A chaotic mess.,negative,csv_imdb
-5,The chemistry between the leads is electric. A romance done right.,positive,csv_imdb
-6,Painfully unfunny comedy that mistakes shouting for humor.,negative,csv_imdb
-7,I couldn't even finish watching this movie. So boring and predictable.,negative,csv_imdb
-8,Terrible film. A complete waste of time and money. The plot made no sense.,negative,csv_imdb
-9,Overrated and overhyped. Nothing special about this film at all.,negative,csv_imdb
-10,"Everything about this movie works. The writing, acting, direction - all top notch.",positive,csv_imdb
-11,The acting in this movie is phenomenal. Oscar-worthy performances all around.,positive,csv_imdb
-12,Loved every minute of it. The character development was outstanding and the ending was perfect.,positive,csv_imdb
-13,I wanted to like this movie but it was just bad. Poor writing throughout.,negative,csv_imdb
-14,The best movie of the year without a doubt. Stunning visuals and a powerful message.,positive,csv_imdb
-15,The director did an amazing job bringing this story to life. Every scene was perfectly crafted.,positive,csv_imdb
-16,Brilliant performances by the entire cast. The script was witty and intelligent.,positive,csv_imdb
-17,This movie is an insult to the audience's intelligence. Lazy filmmaking.,negative,csv_imdb
-18,So formulaic and uninspired. Hollywood at its laziest.,negative,csv_imdb
-19,Every cliche in the book packed into one unbearable movie.,negative,csv_imdb
-20,This is what cinema is all about. Pure magic on screen.,positive,csv_imdb
-21,I was blown away by this film. It exceeded all my expectations.,positive,csv_imdb
-22,A gripping thriller that keeps you guessing until the very end. Masterfully directed.,positive,csv_imdb
-23,Perfect casting and flawless execution. A triumph of filmmaking.,positive,csv_imdb
-24,Such a letdown after all the hype. Generic and forgettable.,negative,csv_imdb
-25,I fell asleep halfway through. That's how uninteresting this movie was.,negative,csv_imdb
-26,This movie was absolutely fantastic! The acting was superb and the storyline kept me engaged throughout.,positive,csv_imdb
-27,Nothing redeeming about this film. Save your money and watch something else.,negative,csv_imdb
-28,"The worst movie I've seen this year. Bad acting, bad script, bad everything.",negative,csv_imdb
-29,The plot holes in this movie are enormous. Did anyone proofread the script?,negative,csv_imdb
-30,A truly moving experience. This film will stay with me for a long time.,positive,csv_imdb
-31,Two hours of my life I'll never get back. Avoid at all costs.,negative,csv_imdb
-32,A beautiful and heartwarming film that the whole family can enjoy.,positive,csv_imdb
-33,The special effects were terrible and the story was nonsensical.,negative,csv_imdb
-34,A masterpiece of modern cinema. Beautiful cinematography and an incredible soundtrack.,positive,csv_imdb
-35,"The soundtrack alone makes this worth watching. Combined with great acting, it's unmissable.",positive,csv_imdb
-36,One of the best films I've seen in years. Highly recommended for anyone who loves drama.,positive,csv_imdb
-37,I've seen better acting in school plays. How did this get funded?,negative,csv_imdb
-38,Poorly directed with no sense of pacing. Scenes drag on forever.,negative,csv_imdb
-39,An instant classic. This movie will be remembered for decades.,positive,csv_imdb
-40,Trying too hard to be clever and failing miserably. Pretentious garbage.,negative,csv_imdb
-41,Incredible storytelling with perfect pacing. Not a single dull moment.,positive,csv_imdb
-42,"Smart, funny, and surprisingly deep. Much better than I expected.",positive,csv_imdb
-43,Visually stunning and emotionally powerful. A film that demands to be seen on the big screen.,positive,csv_imdb
-44,A sequel nobody asked for and nobody enjoyed. Pure cash grab.,negative,csv_imdb
-45,A feel-good movie that actually delivers. Left the theater with a huge smile.,positive,csv_imdb
-46,"An absolute delight from start to finish. Fun, entertaining, and thought-provoking.",positive,csv_imdb
-47,"Awful pacing, terrible script, and mediocre acting. A total disaster.",negative,csv_imdb
-48,"I laughed, I cried, I was on the edge of my seat. What a rollercoaster of emotions!",positive,csv_imdb
-49,What a disappointment. The trailer was better than the actual film.,negative,csv_imdb
-50,"A boring, predictable mess. You can guess the ending within the first ten minutes.",negative,csv_imdb
+id,review_text,sentiment,source,quality_score,text_length,word_count
+1,The characters are one-dimensional and impossible to care about.,negative,csv_kaggle,50,64,9
+2,The acting was wooden and the dialogue was cringe-worthy. Very poor effort.,negative,csv_kaggle,60,75,12
+3,The director clearly had no vision for this project. A chaotic mess.,negative,csv_kaggle,60,68,12
+4,I could not even finish watching this movie. So boring and predictable.,negative,csv_kaggle,60,71,12
+5,Terrible film. A complete waste of time and money. The plot made no sense.,negative,csv_kaggle,65,74,14
+6,Overrated and overhyped. Nothing special about this film at all.,negative,csv_kaggle,60,64,10
+7,"Everything about this movie works. The writing, acting, direction - all top notch.",positive,csv_kaggle,65,82,13
+8,The acting in this movie is phenomenal. Oscar-worthy performances all around.,positive,csv_kaggle,60,77,11
+9,Loved every minute of it. The character development was outstanding and the ending was perfect.,positive,csv_kaggle,60,95,15
+10,I wanted to like this movie but it was just bad. Poor writing throughout.,negative,csv_kaggle,60,73,14
+11,The best movie of the year without a doubt. Stunning visuals and a powerful message.,positive,csv_kaggle,60,84,15
+12,The director did an amazing job bringing this story to life. Every scene was perfectly crafted.,positive,csv_kaggle,60,95,16
+13,Brilliant performances by the entire cast. The script was witty and intelligent.,positive,csv_kaggle,60,80,12
+14,This movie is an insult to the audience is intelligence. Lazy filmmaking.,negative,csv_kaggle,60,73,12
+15,Every cliche in the book packed into one unbearable movie.,negative,csv_kaggle,55,58,10
+16,This is what cinema is all about. Pure magic on screen.,positive,csv_kaggle,60,55,11
+17,I was blown away by this film. It exceeded all my expectations.,positive,csv_kaggle,60,63,12
+18,A gripping thriller that keeps you guessing until the very end. Masterfully directed.,positive,csv_kaggle,60,85,13
+19,Such a letdown after all the hype. Generic and forgettable.,negative,csv_kaggle,60,59,10
+20,I fell asleep halfway through. That is how uninteresting this movie was.,negative,csv_kaggle,60,72,12
+21,This movie was absolutely fantastic! The acting was superb and the storyline kept me engaged throughout.,positive,csv_kaggle,65,104,16
+22,Nothing redeeming about this film. Save your money and watch something else.,negative,csv_kaggle,60,76,12
+23,"The worst movie I have seen this year. Bad acting, bad script, bad everything.",negative,csv_kaggle,65,78,14
+24,The plot holes in this movie are enormous. Did anyone proofread the script?,negative,csv_kaggle,65,75,13
+25,A truly moving experience. This film will stay with me for a long time.,positive,csv_kaggle,60,71,14
+26,Two hours of my life I will never get back. Avoid at all costs.,negative,csv_kaggle,60,63,14
+27,A beautiful and heartwarming film that the whole family can enjoy.,positive,csv_kaggle,55,66,11
+28,The special effects were terrible and the story was nonsensical.,negative,csv_kaggle,55,64,10
+29,A masterpiece of modern cinema. Beautiful cinematography and an incredible soundtrack.,positive,csv_kaggle,60,86,11
+30,"The soundtrack alone makes this worth watching. Combined with great acting, it is unmissable.",positive,csv_kaggle,65,93,14
+31,One of the best films I have seen in years. Highly recommended for anyone who loves drama.,positive,csv_kaggle,60,90,17
+32,I have seen better acting in school plays. How did this get funded?,negative,csv_kaggle,65,67,13
+33,An instant classic. This movie will be remembered for decades.,positive,csv_kaggle,60,62,10
+34,Trying too hard to be clever and failing miserably. Pretentious garbage.,negative,csv_kaggle,60,72,11
+35,Visually stunning and emotionally powerful. A film that demands to be seen on the big screen.,positive,csv_kaggle,60,93,16
+36,A feel-good movie that actually delivers. Left the theater with a huge smile.,positive,csv_kaggle,60,77,13
+37,"An absolute delight from start to finish. Fun, entertaining, and thought-provoking.",positive,csv_kaggle,65,83,11
+38,"I laughed, I cried, I was on the edge of my seat. What a rollercoaster of emotions!",positive,csv_kaggle,70,83,17
+39,What a disappointment. The trailer was better than the actual film.,negative,csv_kaggle,60,67,11
+40,Tim Robbins and Morgan Freeman deliver career-defining performances. The story of hope and perseverance transcends the prison setting to deliver something truly universal. Every scene is crafted with care and the payoff is magnificent.,positive,scraping_imdb,75,235,34
+41,Heath Ledger is Joker is absolutely terrifying and mesmerizing at the same time. Nolan crafted a superhero film that doubles as a crime thriller. The interrogation scene alone is worth the price of admission.,positive,scraping_imdb,75,208,34
+42,The concept is mind-blowing but the execution is even better. Multiple layers of dreams within dreams and somehow Nolan keeps it all coherent. Hans Zimmer is score elevates everything.,positive,scraping_imdb,75,184,29
+43,Tarantino is dialogue is unmatched. The nonlinear storytelling keeps you engaged and the characters are unforgettable. The diner scene and the dance scene at Jack Rabbit Slim is are iconic.,positive,scraping_imdb,75,189,30
+44,I was very disappointed by this film. The pacing is incredibly slow and nothing really happens for the first hour. The special effects look dated and the acting is wooden.,negative,scraping_imdb,75,171,30
+45,Tom Hanks gives the performance of a lifetime. The way the film weaves historical events into Forrest is journey is both clever and moving. The feather motif is beautiful symbolism.,positive,scraping_imdb,75,181,30
+46,This movie glorifies violence and toxic masculinity. The twist ending does not justify two hours of nihilistic destruction. I found it deeply unpleasant to watch.,negative,scraping_imdb,75,162,25
+47,Marlon Brando is opening scene sets the tone for what is arguably the greatest film ever made. The attention to detail in recreating 1940s New York is extraordinary.,positive,scraping_imdb,70,165,28
+48,Nolan is most ambitious film and it mostly delivers. The docking scene is one of the most intense sequences in cinema history. McConaughey is emotional range is impressive.,positive,scraping_imdb,75,172,28
+49,A predictable and formulaic blockbuster. The characters have no depth and the plot is just an excuse to string together CGI action sequences. The humor falls flat.,negative,scraping_imdb,75,163,27
+50,Brad Pitt and Edward Norton have incredible chemistry. The social commentary about consumerism and identity feels even more relevant today than when it was released.,positive,scraping_imdb,70,165,25
+51,Leonardo DiCaprio and Kate Winslet have zero chemistry. The dialogue is cringe-worthy and the love story is utterly unconvincing. Overrated in every possible way.,negative,scraping_imdb,75,162,24
+52,An absolute joy from start to finish. The way Tarantino plays with chronology keeps you guessing and every character feels fully realized. A film that rewards multiple viewings.,positive,scraping_imdb,75,177,28
