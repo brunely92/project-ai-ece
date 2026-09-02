@@ -14,7 +14,7 @@ os.environ.setdefault("DATABASE_PATH", "data/movies_reviews.sqlite")
 
 from src.api.main import app
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 HEADERS = {"x-api-key": "test-key"}
 
 # Le modèle IA (transformers/torch) n'est pas installé en CI (trop lourd) :
@@ -167,6 +167,14 @@ class TestPredict:
         elapsed = time.time() - start
         assert r.status_code == 200
         assert elapsed < 5.0
+
+    def test_predict_with_emojis(self):
+        """Non-régression (incident fix/incident-encoding) : /predict ne doit plus
+        crasher (500) sur des textes contenant des emojis."""
+        r = client.post("/predict", json={"text": "This movie is great 🎬👍"}, headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["sentiment"] in ("positive", "negative")
 
 
 @requires_model
