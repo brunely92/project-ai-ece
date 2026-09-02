@@ -13,16 +13,24 @@
 
 ## Tableau avant/après
 
+Mesuré sur l'exécution du pipeline complet (7 sources, voir `docs/final_evidence_map.md` C1) :
+
 | Métrique | Avant nettoyage | Après nettoyage |
 |----------|----------------|-----------------|
-| Nombre de lignes | À compléter | À compléter |
-| Doublons | À compléter | 0 |
-| Valeurs nulles (texte) | À compléter | 0 |
-| Avis < 20 caractères | À compléter | 0 |
-| Sentiments invalides | À compléter | 0 |
+| Nombre de lignes | 230 173 | 188 190 |
+| Doublons | 6 892 (supprimés après dédoublonnage) | 0 |
+| Valeurs nulles (texte) | 0 | 0 |
+| Avis < 20 caractères | 15 832 (supprimés) | 0 |
+| Non-anglais (filtre langue) | 19 203 (supprimés) | — |
+| Sentiments invalides | 0 | 0 |
+
+Sources finales : amazon_reviews (49 857), csv_kaggle_imdb (49 566), yelp_reviews (49 068),
+sst2_stanford (34 312), rotten_tomatoes (5 023), scraping_imdb (364).
+Rapport complet et reproductible : `data/processed/cleaning_report.txt` (régénéré à chaque exécution).
 
 ## Scripts
 
 - Nettoyage : `python -m src.transform.clean_dataset`
 - Validation : `python -m src.transform.validate_dataset`
-- Sortie : `data/processed/reviews_clean.csv`
+- Sortie : `data/processed/reviews_clean.csv` (non versionné — dépasse la limite de taille GitHub,
+  voir `data/raw/*.csv` dans `.gitignore` ; régénérer localement via les commandes ci-dessus)

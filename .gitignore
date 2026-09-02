@@ -7,6 +7,8 @@ __pycache__/
 *.db
 data/raw/*.csv
 !data/raw/.gitkeep
+data/processed/*.csv
+!data/processed/.gitkeep
 .vscode/
 .idea/
 .DS_Store
