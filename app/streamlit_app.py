@@ -38,10 +38,15 @@ COLORS = {
 }
 
 st.set_page_config(
-    page_title="SentimentFlick — Analyse de Sentiment",
+    page_title="SentimentFlick (Streamlit — legacy backup)",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="auto",
+)
+st.info(
+    "Cette interface Streamlit est conservée comme backup. "
+    "L'application principale est désormais le frontend servi par l'API : http://127.0.0.1:8000/",
+    icon="ℹ️",
 )
 
 

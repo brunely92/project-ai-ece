@@ -12,7 +12,10 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -42,6 +45,28 @@ app = FastAPI(
 
 # Intégrer le middleware de monitoring
 app.add_middleware(MonitoringMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+FRONTEND_DIR = Path("frontend")
+if FRONTEND_DIR.is_dir():
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
+
+
+@app.get("/", tags=["Système"])
+def serve_frontend():
+    """Sert l'application frontend (frontend/index.html)."""
+    index_file = FRONTEND_DIR / "index.html"
+    if not index_file.exists():
+        raise HTTPException(status_code=404, detail="Frontend introuvable (frontend/index.html manquant)")
+    return FileResponse(index_file)
+
 
 api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
 

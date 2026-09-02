@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentimentFlick</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+        colors: {
+          bg: '#0F172A',
+          card: '#1E293B',
+          border: '#334155',
+          accent: '#6366F1',
+          text: '#F8FAFC',
+          secondary: '#94A3B8',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background-color: #0F172A; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body class="bg-bg text-text font-sans antialiased">
+
+  <button id="hamburger" onclick="toggleSidebar()"
+    class="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-card border border-border text-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </button>
+
+  <div class="flex min-h-screen">
+    <aside id="sidebar"
+      class="w-60 shrink-0 bg-card border-r border-border flex flex-col fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200">
+      <div class="px-5 py-5 border-b border-border">
+        <span class="text-base font-semibold text-text">SentimentFlick</span>
+      </div>
+
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        <button data-tab="analyse" onclick="switchTab('analyse')"
+          class="nav-item w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border-l-2 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+          </svg>
+          Analyse
+        </button>
+        <button data-tab="dashboard" onclick="switchTab('dashboard')"
+          class="nav-item w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border-l-2 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="9"></rect>
+            <rect x="14" y="3" width="7" height="5"></rect>
+            <rect x="14" y="12" width="7" height="9"></rect>
+            <rect x="3" y="16" width="7" height="5"></rect>
+          </svg>
+          Dashboard
+        </button>
+        <button data-tab="modeles" onclick="switchTab('modeles')"
+          class="nav-item w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border-l-2 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"></path>
+            <path d="M10 3v6.5L4.5 19a1.8 1.8 0 0 0 1.5 2.8h12a1.8 1.8 0 0 0 1.5-2.8L14 9.5V3"></path>
+          </svg>
+          Modèles
+        </button>
+        <button data-tab="films" onclick="switchTab('films')"
+          class="nav-item w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border-l-2 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="5" width="15" height="14" rx="2"></rect>
+            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+          </svg>
+          Films
+        </button>
+        <button data-tab="recherche" onclick="switchTab('recherche')"
+          class="nav-item w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm border-l-2 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          Recherche
+        </button>
+      </nav>
+
+      <div class="px-5 py-4 border-t border-border text-xs text-secondary leading-relaxed">
+        188 190 reviews — 59 tests — v2.0.0
+      </div>
+    </aside>
+
+    <main class="flex-1 min-w-0 px-6 pt-16 pb-8 md:px-10 md:py-10">
+      <div class="max-w-5xl mx-auto w-full">
+
+        <section id="tab-analyse" class="tab-panel active space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-text">SentimentFlick</h1>
+            <p class="text-sm text-secondary mt-1">Analyse de sentiment d'avis de films.</p>
+          </div>
+
+          <div class="bg-card border border-border rounded-lg p-5 space-y-4">
+            <textarea id="reviewText" rows="4"
+              placeholder="Write a movie review in English..."
+              class="w-full bg-bg border border-border rounded-md p-3 text-sm text-text placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent resize-none"></textarea>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="example-btn text-xs px-3 py-1.5 border border-border rounded-md text-secondary hover:border-accent hover:text-accent transition"
+                data-text="This movie was absolutely brilliant, a masterpiece!">Brilliant masterpiece</button>
+              <button type="button" class="example-btn text-xs px-3 py-1.5 border border-border rounded-md text-secondary hover:border-accent hover:text-accent transition"
+                data-text="Terrible waste of time, boring and predictable.">Terrible waste of time</button>
+              <button type="button" class="example-btn text-xs px-3 py-1.5 border border-border rounded-md text-secondary hover:border-accent hover:text-accent transition"
+                data-text="Not bad, but not great either. Average at best.">Average at best</button>
+              <button type="button" class="example-btn text-xs px-3 py-1.5 border border-border rounded-md text-secondary hover:border-accent hover:text-accent transition"
+                data-text="The visuals were stunning but the story made no sense.">Stunning visuals, weak story</button>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <button id="analyzeBtn" type="button"
+                class="bg-accent hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-md transition">
+                Analyser
+              </button>
+              <label class="flex items-center gap-2 text-sm text-secondary cursor-pointer select-none">
+                <input type="checkbox" id="compareToggle" class="accent-accent">
+                Comparer les modèles
+              </label>
+            </div>
+          </div>
+
+          <div id="resultArea"></div>
+        </section>
+
+        <section id="tab-dashboard" class="tab-panel space-y-6">
+          <h1 class="text-xl font-semibold text-text">Dashboard</h1>
+          <div id="kpiGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+          <div class="bg-card border border-border rounded-lg p-5">
+            <h2 class="text-sm font-medium text-secondary mb-3">Confusion matrix</h2>
+            <table id="confusionTable" class="w-full text-sm"></table>
+          </div>
+        </section>
+
+        <section id="tab-modeles" class="tab-panel space-y-6">
+          <h1 class="text-xl font-semibold text-text">Modèles</h1>
+          <div class="bg-card border border-border rounded-lg p-5 overflow-x-auto">
+            <table id="modelsTable" class="w-full text-sm"></table>
+          </div>
+
+          <div class="bg-card border border-border rounded-lg p-5 space-y-4">
+            <h2 class="text-sm font-medium text-secondary">Tester un texte sur les 3 modèles</h2>
+            <div class="flex gap-2">
+              <input id="compareInput" type="text" placeholder="Type a review..."
+                class="flex-1 bg-bg border border-border rounded-md px-3 py-2 text-sm text-text placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent">
+              <button id="compareBtn" type="button" class="bg-accent hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-md transition">Comparer</button>
+            </div>
+            <div id="compareResults" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+          </div>
+        </section>
+
+        <section id="tab-films" class="tab-panel space-y-6">
+          <h1 class="text-xl font-semibold text-text">Films</h1>
+          <div class="bg-card border border-border rounded-lg p-5 overflow-x-auto">
+            <table id="filmsTable" class="w-full text-sm"></table>
+          </div>
+        </section>
+
+        <section id="tab-recherche" class="tab-panel space-y-6">
+          <h1 class="text-xl font-semibold text-text">Recherche</h1>
+          <div class="relative max-w-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search reviews..."
+              class="w-full bg-card border border-border rounded-md pl-9 pr-3 py-2 text-sm text-text placeholder-secondary focus:outline-none focus:ring-1 focus:ring-accent">
+          </div>
+          <div id="searchMeta" class="flex items-center justify-between"></div>
+          <div id="searchResults" class="divide-y divide-border"></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="fixed top-4 right-4 z-50 hidden"></div>
+
+<script>
+  const API_BASE = window.location.origin;
+  const API_KEY = "dev-key-change-me";
+  const loaded = { dashboard: false, modeles: false, films: false };
+  let lastSearchResults = [];
+  let searchDebounce = null;
+  let toastTimer = null;
+
+  // ── Helpers ──
+
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  function toast(message, isError = false) {
+    const el = document.getElementById("toast");
+    el.innerHTML = `<div class="bg-card border ${isError ? "border-red-500/40 text-red-400" : "border-border text-text"} rounded-md px-4 py-3 text-sm shadow-sm max-w-xs">${escapeHtml(message)}</div>`;
+    el.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add("hidden"), 3000);
+  }
+
+  async function apiFetch(path, options = {}) {
+    try {
+      const res = await fetch(API_BASE + path, {
+        ...options,
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY, ...(options.headers || {}) },
+      });
+      if (!res.ok) {
+        if (res.status === 401) toast("Authentication error", true);
+        else if (res.status !== 404) toast(`API error: ${res.status}`, true);
+        return null;
+      }
+      return await res.json();
+    } catch (e) {
+      toast("API unreachable. Start: uvicorn src.api.main:app --reload", true);
+      return null;
+    }
+  }
+
+  function skeletonCards(n) {
+    const cols = n > 1 ? "md:grid-cols-2" : "";
+    return `<div class="grid grid-cols-1 ${cols} gap-4">` +
+      Array.from({ length: n }).map(() => `
+        <div class="bg-card border border-border rounded-lg p-5">
+          <div class="h-3 w-24 bg-border/50 rounded animate-pulse"></div>
+          <div class="h-5 w-20 bg-border/50 rounded animate-pulse mt-3"></div>
+          <div class="h-1.5 bg-border/50 rounded-full mt-4 animate-pulse"></div>
+        </div>`).join("") + `</div>`;
+  }
+
+  function skeletonTable(rows = 4) {
+    return "<tbody>" + Array.from({ length: rows }).map(() => `
+      <tr><td class="py-2"><div class="h-4 bg-border/50 rounded animate-pulse w-full"></div></td></tr>
+    `).join("") + "</tbody>";
+  }
+
+  function skeletonRows(n = 4) {
+    return Array.from({ length: n }).map(() => `
+      <div class="py-3">
+        <div class="h-3 bg-border/50 rounded animate-pulse w-1/4 mb-2"></div>
+        <div class="h-4 bg-border/50 rounded animate-pulse w-3/4"></div>
+      </div>`).join("");
+  }
+
+  function resultCard(label, sentiment, score, timeMs) {
+    const isPos = sentiment === "positive";
+    return `
+      <div class="bg-card border border-border rounded-lg p-5">
+        <div class="text-xs text-secondary uppercase tracking-wide mb-2">${escapeHtml(label)}</div>
+        <div class="text-xl font-semibold ${isPos ? "text-emerald-400" : "text-red-400"}">${escapeHtml(sentiment)}</div>
+        <div class="h-1.5 bg-border rounded-full mt-3 overflow-hidden">
+          <div class="h-full ${isPos ? "bg-emerald-500" : "bg-red-500"} rounded-full transition-all duration-500" style="width:${(score * 100).toFixed(0)}%"></div>
+        </div>
+        <div class="text-xs text-secondary mt-2">${(score * 100).toFixed(1)}% confidence · ${timeMs.toFixed(0)} ms</div>
+      </div>`;
+  }
+
+  function modelCard(label, sentiment, score, timeMs) {
+    const isPos = sentiment === "positive";
+    return `
+      <div class="bg-bg border border-border rounded-lg p-4">
+        <div class="text-xs text-secondary mb-1">${escapeHtml(label)}</div>
+        <div class="text-sm font-medium ${isPos ? "text-emerald-400" : "text-red-400"}">${escapeHtml(sentiment)}</div>
+        <div class="h-1.5 bg-border rounded-full mt-2 overflow-hidden">
+          <div class="h-full ${isPos ? "bg-emerald-500" : "bg-red-500"} rounded-full" style="width:${(score * 100).toFixed(0)}%"></div>
+        </div>
+        <div class="text-xs text-secondary mt-2">${(score * 100).toFixed(1)}% · ${timeMs.toFixed(1)} ms</div>
+      </div>`;
+  }
+
+  // ── Navigation ──
+
+  function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("-translate-x-full");
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+    document.getElementById("tab-" + tab).classList.add("active");
+
+    document.querySelectorAll(".nav-item").forEach((btn) => {
+      const active = btn.dataset.tab === tab;
+      btn.classList.toggle("bg-accent/10", active);
+      btn.classList.toggle("text-accent", active);
+      btn.classList.toggle("border-accent", active);
+      btn.classList.toggle("text-secondary", !active);
+      btn.classList.toggle("border-transparent", !active);
+    });
+
+    if (tab === "dashboard" && !loaded.dashboard) loadDashboard();
+    if (tab === "modeles" && !loaded.modeles) loadModeles();
+    if (tab === "films" && !loaded.films) loadFilms();
+
+    document.getElementById("sidebar").classList.add("-translate-x-full");
+    if (window.innerWidth >= 768) document.getElementById("sidebar").classList.remove("-translate-x-full");
+  }
+
+  // ── Tab: Analyse ──
+
+  document.querySelectorAll(".example-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById("reviewText").value = btn.dataset.text;
+    });
+  });
+
+  document.getElementById("analyzeBtn").addEventListener("click", async () => {
+    const text = document.getElementById("reviewText").value.trim();
+    if (text.length < 5) { toast("Enter at least 5 characters", true); return; }
+    const compare = document.getElementById("compareToggle").checked;
+    const resultArea = document.getElementById("resultArea");
+    resultArea.innerHTML = skeletonCards(compare ? 2 : 1);
+
+    const calls = [apiFetch("/predict", { method: "POST", body: JSON.stringify({ text }) })];
+    if (compare) calls.push(apiFetch("/predict/custom", { method: "POST", body: JSON.stringify({ text }) }));
+    const [hf, custom] = await Promise.all(calls);
+
+    const cards = [];
+    if (hf) cards.push(resultCard("HuggingFace DistilBERT", hf.sentiment, hf.score, hf.processing_time_ms));
+    if (compare && custom) cards.push(resultCard("TF-IDF + LogReg (custom)", custom.sentiment, custom.score, custom.processing_time_ms));
+
+    resultArea.innerHTML = cards.length
+      ? `<div class="grid grid-cols-1 ${compare ? "md:grid-cols-2" : ""} gap-4">${cards.join("")}</div>`
+      : "";
+  });
+
+  // ── Tab: Dashboard ──
+
+  async function loadDashboard() {
+    loaded.dashboard = true;
+    const kpiGrid = document.getElementById("kpiGrid");
+    kpiGrid.innerHTML = Array.from({ length: 4 }).map(() => `
+      <div class="bg-card border border-border rounded-lg p-4">
+        <div class="h-3 w-20 bg-border/50 rounded animate-pulse"></div>
+        <div class="h-6 w-16 bg-border/50 rounded animate-pulse mt-2"></div>
+      </div>`).join("");
+    document.getElementById("confusionTable").innerHTML = skeletonTable(2);
+
+    const stats = await apiFetch("/stats");
+    const metrics = await apiFetch("/monitoring/metrics");
+
+    if (stats) {
+      const kpis = [
+        ["Total reviews", stats.total_reviews.toLocaleString()],
+        ["Model accuracy", stats.model_accuracy != null ? stats.model_accuracy + "%" : "—"],
+        ["Films", stats.total_films],
+        ["Predictions", stats.total_predictions],
+      ];
+      kpiGrid.innerHTML = kpis.map(([label, value]) => `
+        <div class="bg-card border border-border rounded-lg p-4">
+          <div class="text-xs text-secondary">${label}</div>
+          <div class="text-2xl font-semibold mt-1">${value}</div>
+        </div>`).join("");
+    }
+
+    const table = document.getElementById("confusionTable");
+    if (metrics && metrics.confusion_matrix) {
+      const m = metrics.confusion_matrix;
+      const pp = m.positive?.positive ?? 0, pn = m.positive?.negative ?? 0;
+      const np = m.negative?.positive ?? 0, nn = m.negative?.negative ?? 0;
+      table.innerHTML = `
+        <thead><tr class="text-left text-secondary text-xs">
+          <th class="py-2 font-normal"></th>
+          <th class="py-2 font-normal">Predicted positive</th>
+          <th class="py-2 font-normal">Predicted negative</th>
+        </tr></thead>
+        <tbody>
+          <tr class="border-t border-border"><td class="py-2 text-secondary">Actual positive</td><td class="py-2">${pp}</td><td class="py-2">${pn}</td></tr>
+          <tr class="border-t border-border"><td class="py-2 text-secondary">Actual negative</td><td class="py-2">${np}</td><td class="py-2">${nn}</td></tr>
+        </tbody>`;
+    } else {
+      table.innerHTML = `<tbody><tr><td class="text-secondary text-sm py-4">No predictions available yet.</td></tr></tbody>`;
+    }
+  }
+
+  // ── Tab: Modèles ──
+
+  async function loadModeles() {
+    loaded.modeles = true;
+    const table = document.getElementById("modelsTable");
+    table.innerHTML = skeletonTable(3);
+
+    const data = await apiFetch("/models/comparison");
+    if (!data) {
+      table.innerHTML = `<tbody><tr><td class="text-secondary text-sm py-4">Comparison unavailable. Run: python -m src.model.compare_models</td></tr></tbody>`;
+      return;
+    }
+
+    const rows = Object.entries(data.models);
+    const best = rows.reduce((a, b) => (b[1].accuracy > a[1].accuracy ? b : a))[0];
+
+    table.innerHTML = `
+      <thead><tr class="text-left text-secondary text-xs">
+        <th class="py-2 font-normal">Model</th>
+        <th class="py-2 font-normal">Accuracy</th>
+        <th class="py-2 font-normal">Precision</th>
+        <th class="py-2 font-normal">Recall</th>
+        <th class="py-2 font-normal">F1</th>
+        <th class="py-2 font-normal">Latency (ms)</th>
+        <th class="py-2 font-normal"></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(([name, m]) => `
+          <tr class="border-t border-border">
+            <td class="py-2">${escapeHtml(name)}</td>
+            <td class="py-2">${(m.accuracy * 100).toFixed(1)}%</td>
+            <td class="py-2">${(m.precision * 100).toFixed(1)}%</td>
+            <td class="py-2">${(m.recall * 100).toFixed(1)}%</td>
+            <td class="py-2">${(m.f1_score * 100).toFixed(1)}%</td>
+            <td class="py-2">${m.avg_latency_ms.toFixed(2)}</td>
+            <td class="py-2">${name === best ? '<span class="text-emerald-400 text-xs">best</span>' : ""}</td>
+          </tr>`).join("")}
+      </tbody>`;
+  }
+
+  document.getElementById("compareBtn").addEventListener("click", async () => {
+    const text = document.getElementById("compareInput").value.trim();
+    if (text.length < 5) { toast("Enter at least 5 characters", true); return; }
+    const results = document.getElementById("compareResults");
+    results.innerHTML = skeletonCards(3).replace('<div class="grid grid-cols-1 md:grid-cols-2 gap-4">', '<div class="contents">');
+
+    const [compareRes, customRes] = await Promise.all([
+      apiFetch("/predict/compare", { method: "POST", body: JSON.stringify({ text }) }),
+      apiFetch("/predict/custom", { method: "POST", body: JSON.stringify({ text }) }),
+    ]);
+
+    const cards = [];
+    if (compareRes) {
+      const hf = compareRes.models.huggingface_distilbert;
+      cards.push(modelCard("HuggingFace DistilBERT", hf.sentiment, hf.score, hf.time_ms));
+      const tb = compareRes.models.textblob;
+      if (tb.sentiment !== "unavailable") cards.push(modelCard("TextBlob", tb.sentiment, tb.score, tb.time_ms));
+    }
+    if (customRes) cards.push(modelCard("TF-IDF + LogReg", customRes.sentiment, customRes.score, customRes.processing_time_ms));
+
+    results.innerHTML = cards.join("") || '<p class="text-secondary text-sm">No result.</p>';
+  });
+
+  // ── Tab: Films ──
+
+  async function loadFilms() {
+    loaded.films = true;
+    const table = document.getElementById("filmsTable");
+    table.innerHTML = skeletonTable(6);
+
+    const data = await apiFetch("/films?limit=30");
+    if (!data || !data.films.length) {
+      table.innerHTML = `<tbody><tr><td class="text-secondary text-sm py-4">No films available.</td></tr></tbody>`;
+      return;
+    }
+
+    table.innerHTML = `
+      <thead><tr class="text-left text-secondary text-xs">
+        <th class="py-2 font-normal">Title</th>
+        <th class="py-2 font-normal">Rating</th>
+        <th class="py-2 font-normal">Reviews</th>
+        <th class="py-2 font-normal">% positive</th>
+      </tr></thead>
+      <tbody>
+        ${data.films.map((f) => `
+          <tr class="border-t border-border">
+            <td class="py-2">${escapeHtml(f.title)}</td>
+            <td class="py-2">${f.vote_average != null ? f.vote_average.toFixed(1) : "—"}</td>
+            <td class="py-2">${f.nb_reviews}</td>
+            <td class="py-2">${f.pct_positive != null ? f.pct_positive + "%" : "—"}</td>
+          </tr>`).join("")}
+      </tbody>`;
+  }
+
+  // ── Tab: Recherche ──
+
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    clearTimeout(searchDebounce);
+    const q = e.target.value.trim();
+    if (q.length < 2) {
+      document.getElementById("searchResults").innerHTML = "";
+      document.getElementById("searchMeta").innerHTML = "";
+      return;
+    }
+    document.getElementById("searchResults").innerHTML = skeletonRows(4);
+    searchDebounce = setTimeout(() => runSearch(q), 350);
+  });
+
+  async function runSearch(q) {
+    const data = await apiFetch("/search?q=" + encodeURIComponent(q));
+    if (!data) return;
+    lastSearchResults = data.reviews;
+
+    document.getElementById("searchMeta").innerHTML = `
+      <span class="text-sm text-secondary">${data.count} result(s) for "${escapeHtml(data.query)}"</span>
+      ${data.reviews.length ? '<button id="exportBtn" type="button" class="text-xs px-3 py-1.5 border border-border rounded-md text-secondary hover:border-accent hover:text-accent transition">Export CSV</button>' : ""}
+    `;
+    const exportBtn = document.getElementById("exportBtn");
+    if (exportBtn) exportBtn.addEventListener("click", exportCsv);
+
+    document.getElementById("searchResults").innerHTML = data.reviews.map((r) => `
+      <div class="py-3">
+        <div class="flex items-center gap-2 text-xs mb-1">
+          <span class="px-1.5 py-0.5 rounded ${r.sentiment === "positive" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}">${escapeHtml(r.sentiment || "?")}</span>
+          <span class="text-secondary">#${r.id} · ${escapeHtml(r.source)}</span>
+        </div>
+        <p class="text-sm text-text/90">${escapeHtml(r.review_text.slice(0, 300))}${r.review_text.length > 300 ? "..." : ""}</p>
+      </div>`).join("") || '<p class="text-secondary text-sm py-4">No results.</p>';
+  }
+
+  function exportCsv() {
+    const header = "id,sentiment,source,review_text\n";
+    const rows = lastSearchResults.map((r) => [
+      r.id, r.sentiment, r.source, '"' + String(r.review_text).replace(/"/g, '""') + '"',
+    ].join(","));
+    const csv = header + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "search_results.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Init ──
+  switchTab("analyse");
+</script>
+</body>
+</html>
