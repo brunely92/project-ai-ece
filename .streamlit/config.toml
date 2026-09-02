@@ -1,0 +1,15 @@
+# Thème Streamlit — design system SentimentFlick (C17)
+# Le thème natif est nécessaire en plus du CSS custom (app/streamlit_app.py) :
+# les graphiques natifs (st.bar_chart, Vega-Lite) et widgets Streamlit ne peuvent
+# être passés en dark mode que via cette configuration, pas par CSS seul.
+
+[theme]
+base = "dark"
+backgroundColor = "#0F172A"
+secondaryBackgroundColor = "#1E293B"
+textColor = "#F8FAFC"
+primaryColor = "#6366F1"
+font = "sans serif"
+
+[server]
+headless = true
