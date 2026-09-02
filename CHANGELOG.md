@@ -23,7 +23,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/), versionnage 
   (DistilBERT + custom), du framework API (FastAPI), avec alternatives écartées et conséquences.
 - CI/CD renforcée : job de lint (`ruff check`), couverture de tests (`pytest-cov`), configuration
   `ruff.toml` dédiée.
-- 16 nouveaux tests API + 7 tests du modèle custom → **58 tests au total**.
+- 17 nouveaux tests API + 7 tests du modèle custom → **59 tests au total**.
 - Gestion d'un incident réel (pas simulé) : caractères Unicode/emoji provoquant un crash de
   `/predict`, corrigé via la branche `fix/incident-encoding` (voir `docs/incident_report.md`).
 
