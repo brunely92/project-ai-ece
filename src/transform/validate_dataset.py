@@ -59,7 +59,7 @@ def validate():
     print(f"[OK] Sentiments valides : {len(labeled)} labellisés sur {len(df)} total")
 
     # 6. Distribution
-    print(f"\n--- Distribution ---")
+    print("\n--- Distribution ---")
     print(f"  Par source : {df['source'].value_counts().to_dict()}")
     if len(labeled) > 0:
         print(f"  Par sentiment : {labeled['sentiment'].value_counts().to_dict()}")

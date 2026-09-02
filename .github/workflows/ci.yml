@@ -9,6 +9,25 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Lint (ruff)
+        run: ruff check src/ tests/
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -34,8 +53,8 @@ jobs:
       - name: Import to database
         run: python -m src.db.import_data
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           API_SECRET_KEY: test-key
           DATABASE_PATH: data/movies_reviews.sqlite
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=term

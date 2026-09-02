@@ -1,0 +1,14 @@
+# C18 — Configuration ruff (lint CI)
+# Cible les erreurs réelles (imports inutilisés, bugs évidents, erreurs de syntaxe)
+# plutôt que le style pur, pour un projet académique existant non formaté au fil de l'eau.
+line-length = 120
+
+[lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # ligne trop longue (requêtes SQL, textes d'exemple)
+    "E701",  # instructions if/elif compactes sur une ligne (scoring qualité, style existant assumé)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["F401"]  # imports parfois utilisés uniquement pour effets de bord (os.environ.setdefault)

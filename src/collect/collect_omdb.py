@@ -8,7 +8,6 @@ runtime, rated, metascore, imdb rating, imdb votes.
 import os
 import sys
 import time
-import csv
 from pathlib import Path
 from datetime import datetime
 

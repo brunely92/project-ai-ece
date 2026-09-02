@@ -56,7 +56,7 @@ def import_reviews(conn):
                 ),
             )
             imported += 1
-        except Exception as e:
+        except Exception:
             rejected += 1
 
     conn.commit()
@@ -96,7 +96,7 @@ def verify_import(conn):
         try:
             count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             print(f"  {table:15s} : {count} lignes")
-        except:
+        except Exception:
             pass
 
     # Stats qualité
@@ -105,12 +105,12 @@ def verify_import(conn):
         print(f"\n  Score qualité moyen : {avg_q}/100")
 
     by_source = conn.execute("SELECT source, COUNT(*) FROM reviews GROUP BY source ORDER BY COUNT(*) DESC").fetchall()
-    print(f"\n  Par source :")
+    print("\n  Par source :")
     for src, count in by_source:
         print(f"    {src:20s} : {count} avis")
 
     by_sent = conn.execute("SELECT sentiment, COUNT(*) FROM reviews WHERE sentiment IS NOT NULL GROUP BY sentiment").fetchall()
-    print(f"\n  Par sentiment :")
+    print("\n  Par sentiment :")
     for sent, count in by_sent:
         print(f"    {sent:20s} : {count} avis")
 

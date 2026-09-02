@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
 
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)

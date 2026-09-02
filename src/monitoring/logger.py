@@ -5,10 +5,7 @@ Format : timestamp | endpoint | status | latency_ms | details
 Seuils d'alerte configurés.
 """
 import logging
-import time
-from datetime import datetime
 from pathlib import Path
-from functools import wraps
 
 # Répertoire de logs
 LOG_DIR = Path("logs")

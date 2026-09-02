@@ -6,12 +6,10 @@ import os
 import sys
 import time
 import sqlite3
-import re
 from pathlib import Path
 from datetime import datetime
 
 import requests
-import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -125,10 +123,9 @@ def link_reviews_to_films(conn: sqlite3.Connection):
 
     for film_id, title in films:
         # Chercher le titre dans les reviews (insensible à la casse)
-        clean_title = title.replace("'", "''")
         try:
             cursor = conn.execute(
-                f"""UPDATE reviews SET film_id = ?
+                """UPDATE reviews SET film_id = ?
                     WHERE film_id IS NULL
                     AND LOWER(review_text) LIKE LOWER(?)""",
                 (film_id, f"%{title.lower()}%"),
@@ -164,7 +161,7 @@ def main():
     nb_linked = conn.execute("SELECT COUNT(*) FROM reviews WHERE film_id IS NOT NULL").fetchone()[0]
     conn.close()
 
-    print(f"\n--- Résultat ---")
+    print("\n--- Résultat ---")
     print(f"  Films en base    : {nb_films}")
     print(f"  Avis liés à un film : {nb_linked}")
     print("=" * 60)

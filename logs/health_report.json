@@ -1,0 +1,13 @@
+[
+  {
+    "timestamp": "2026-09-02T10:30:43.304922",
+    "status": "ok",
+    "health_reachable": true,
+    "health_status_code": 200,
+    "metrics_reachable": true,
+    "accuracy_pct": 85.0,
+    "avg_confidence": 0.9674,
+    "total_predictions": 500,
+    "alerts": []
+  }
+]

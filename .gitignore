@@ -18,3 +18,5 @@ models/*.joblib
 *.safetensors
 *.log
 .ipynb_checkpoints/
+.coverage
+htmlcov/

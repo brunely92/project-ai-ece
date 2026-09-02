@@ -10,7 +10,6 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -98,7 +97,7 @@ def run_batch_predictions(limit: int = 500):
     avg_latency = round(sum(latencies) / len(latencies), 1) if latencies else 0
 
     print(f"\n{'=' * 60}")
-    print(f"RÉSULTATS BATCH PREDICTION")
+    print("RÉSULTATS BATCH PREDICTION")
     print(f"{'=' * 60}")
     print(f"  Modèle           : {MODEL_NAME}")
     print(f"  Avis prédits     : {predicted}")
@@ -117,7 +116,7 @@ def run_batch_predictions(limit: int = 500):
            ORDER BY r.sentiment, p.predicted_sentiment"""
     ).fetchall()
 
-    print(f"\n  Matrice de confusion :")
+    print("\n  Matrice de confusion :")
     print(f"  {'':15s} | {'Prédit POS':>12s} | {'Prédit NEG':>12s}")
     print(f"  {'-' * 45}")
     for label in ["positive", "negative"]:

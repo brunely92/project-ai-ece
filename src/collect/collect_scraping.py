@@ -7,7 +7,6 @@ Normalisation commune, data lineage, rate limiting adaptatif.
 Design pattern : Strategy — chaque site a sa propre logique d'extraction
 mais produit un format de sortie uniforme.
 """
-import sys
 import time
 import re
 import random
@@ -182,7 +181,7 @@ class IMDBScraper(BaseScraper):
                 r_val = r_elem.find("span")
                 if r_val:
                     try: rating = int(r_val.get_text(strip=True))
-                    except: pass
+                    except Exception: pass
 
             title_elem = c.find("a", class_="title")
             author_elem = c.find("span", class_="display-name-link")
@@ -235,7 +234,7 @@ class MetacriticScraper(BaseScraper):
             score_elem = c.find("div", {"class": re.compile(r"metascore|score")})
             if score_elem:
                 try: score = int(score_elem.get_text(strip=True))
-                except: pass
+                except Exception: pass
 
             reviews.append({
                 "text": text_elem.get_text(strip=True),
@@ -520,17 +519,17 @@ def main():
 
     # Rapport détaillé
     print(f"\n{'=' * 70}")
-    print(f"RAPPORT DE SCRAPING MULTI-SITES")
+    print("RAPPORT DE SCRAPING MULTI-SITES")
     print(f"{'=' * 70}")
     print(f"  Total reviews        : {len(df):,}")
     print(f"  Sites couverts       : {df['site_name'].nunique()}")
     print(f"  Films couverts       : {df['film_title'].nunique()}")
     print(f"  Avec rating          : {df['rating'].notna().sum():,}")
-    print(f"\n  Par site :")
+    print("\n  Par site :")
     for site, count in df["site_name"].value_counts().items():
         avg_rating = df[df["site_name"] == site]["rating"].mean()
         print(f"    {site:25s} : {count:>5d} reviews | rating moy: {avg_rating:.1f}")
-    print(f"\n  Top 5 films par volume :")
+    print("\n  Top 5 films par volume :")
     for title, count in df["film_title"].value_counts().head().items():
         print(f"    {title:35s} : {count:>4d} reviews")
     print("=" * 70)

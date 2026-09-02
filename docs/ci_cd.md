@@ -8,9 +8,17 @@
 
 ### Étapes du pipeline
 
+Deux jobs indépendants et parallèles :
+
 ```
-checkout → setup python 3.11 → pip install (requirements-ci.txt) → generate dataset → clean → import → pytest
+lint : checkout → setup python 3.11 → pip install (requirements-ci.txt) → ruff check src/ tests/
+test : checkout → setup python 3.11 → pip install (requirements-ci.txt) → generate dataset → clean
+       → import → pytest --cov=src --cov-report=term
 ```
+
+Le lint (`ruff.toml` à la racine) cible les erreurs réelles (imports inutilisés, bugs évidents) plutôt
+que le style pur. La couverture de tests (`pytest-cov`) est affichée dans les logs CI à titre
+informatif, sans seuil bloquant pour l'instant.
 
 ### Pourquoi un dataset léger en CI ?
 

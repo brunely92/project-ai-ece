@@ -3,9 +3,6 @@ C1 — Téléchargement automatique du dataset IMDB
 Utilise un dataset IMDB hébergé sur Stanford (version légère ~18Mo compressé).
 Alternative au téléchargement manuel depuis Kaggle.
 """
-import sys
-import tarfile
-import os
 from pathlib import Path
 from datetime import datetime
 

@@ -5,17 +5,17 @@ Endpoints données + modèle IA + monitoring + batch + comparaison modèles
 import os
 import sqlite3
 import time
-import re
 import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from collections import Counter
 
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
+
+from src.api.middleware import MonitoringMiddleware
 
 load_dotenv()
 
@@ -40,7 +40,6 @@ app = FastAPI(
 )
 
 # Intégrer le middleware de monitoring
-from src.api.middleware import MonitoringMiddleware
 app.add_middleware(MonitoringMiddleware)
 
 api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)

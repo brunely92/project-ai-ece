@@ -1,13 +1,19 @@
 """
 C10/C17 — Application Streamlit enrichie
-Pages : Analyse, Statistiques, Recherche, Dashboard IA, Explorer les films
+Pages : Analyse, Statistiques, Recherche, Dashboard IA, Explorer les films,
+Comparaison de modèles, Analyse avancée
 """
+import json
 import os
+import re
+import sqlite3
+from collections import Counter
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
 import requests
 import streamlit as st
-import pandas as pd
-import sqlite3
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -58,7 +64,8 @@ def get_db():
 page = st.sidebar.selectbox(
     "Navigation",
     ["🎯 Analyse de sentiment", "📊 Statistiques", "🔍 Recherche",
-     "🤖 Dashboard IA", "🎥 Explorer les films", "🧪 Comparaison de modèles"],
+     "🤖 Dashboard IA", "🎥 Explorer les films", "🧪 Comparaison de modèles",
+     "📈 Analyse avancée"],
 )
 
 # ── Page 1 : Analyse de sentiment ──
@@ -154,6 +161,17 @@ elif page == "🔍 Recherche":
         result = api_call("GET", f"/search?q={query}")
         if result:
             st.info(f"{result['count']} résultat(s) pour « {result['query']} »")
+
+            if result.get("reviews"):
+                df_export = pd.DataFrame(result["reviews"])
+                safe_query = re.sub(r"[^a-zA-Z0-9]+", "_", query).strip("_") or "recherche"
+                st.download_button(
+                    "📥 Exporter les résultats en CSV",
+                    data=df_export.to_csv(index=False).encode("utf-8"),
+                    file_name=f"recherche_{safe_query}.csv",
+                    mime="text/csv",
+                )
+
             for r in result.get("reviews", []):
                 badge = "🟢" if r.get("sentiment") == "positive" else "🔴"
                 with st.expander(f"{badge} Avis #{r['id']} — {r['source']}"):
@@ -239,6 +257,33 @@ elif page == "🤖 Dashboard IA":
     else:
         st.error("Base de données introuvable.")
 
+    # Alertes actives (C20)
+    st.subheader("🚨 Alertes actives")
+    alerts_data = api_call("GET", "/monitoring/alerts")
+    if alerts_data:
+        st.metric("Alertes actives", alerts_data["active_alerts_count"])
+        if alerts_data["alerts"]:
+            st.dataframe(
+                pd.DataFrame({"alerte": alerts_data["alerts"]}),
+                use_container_width=True, hide_index=True,
+            )
+        else:
+            st.success("Aucune alerte active.")
+
+    # Historique des health checks (C20)
+    st.subheader("🩺 Historique des health checks")
+    health_path = Path("logs/health_report.json")
+    if health_path.exists():
+        with open(health_path, "r", encoding="utf-8") as f:
+            health_history = json.load(f)
+        if health_history:
+            df_health = pd.DataFrame(health_history)
+            st.dataframe(df_health, use_container_width=True, hide_index=True)
+        else:
+            st.info("Historique vide.")
+    else:
+        st.info("Aucun health check enregistré. Lancez : python -m src.monitoring.health_check")
+
 # ── Page 5 : Explorer les films ──
 elif page == "🎥 Explorer les films":
     st.title("🎥 Explorer les films")
@@ -309,3 +354,124 @@ elif page == "🧪 Comparaison de modèles":
             st.bar_chart(df_compare["avg_latency_ms"])
     else:
         st.warning("Comparaison indisponible. Lancez : python -m src.model.compare_models")
+
+# ── Page 7 : Analyse avancée ──
+elif page == "📈 Analyse avancée":
+    st.title("📈 Analyse avancée")
+
+    conn = get_db()
+    if conn:
+        # 1. Distribution des scores de qualité
+        st.subheader("Distribution des scores de qualité")
+        df_quality = pd.read_sql_query(
+            "SELECT quality_score FROM reviews WHERE quality_score IS NOT NULL", conn
+        )
+        if not df_quality.empty:
+            fig, ax = plt.subplots(figsize=(8, 3))
+            ax.hist(df_quality["quality_score"], bins=20, color="#4C78A8", edgecolor="white")
+            ax.set_xlabel("Score de qualité")
+            ax.set_ylabel("Nombre d'avis")
+            st.pyplot(fig)
+        else:
+            st.info("Aucun score de qualité en base.")
+
+        st.divider()
+
+        # 2. Mots les plus fréquents par sentiment (table de fréquence, pas de lib wordcloud)
+        st.subheader("Mots les plus fréquents par sentiment")
+        STOPWORDS = {
+            "the", "a", "an", "and", "or", "but", "is", "are", "was", "were", "be", "been",
+            "being", "this", "that", "these", "those", "it", "its", "i", "you", "he", "she",
+            "we", "they", "of", "in", "on", "at", "to", "for", "with", "as", "by", "from",
+            "about", "into", "over", "so", "if", "than", "then", "too", "very", "just",
+            "not", "no", "do", "does", "did", "have", "has", "had", "will", "would", "can",
+            "could", "should", "my", "your", "his", "her", "their", "our", "what", "which",
+            "who", "when", "where", "why", "how", "all", "movie", "film", "one", "also",
+            "there", "out", "up", "down", "more", "most", "some", "them", "his", "her",
+        }
+
+        @st.cache_data(ttl=600)
+        def word_frequencies(sentiment: str, sample_size: int = 2000, top_n: int = 20):
+            sample_conn = sqlite3.connect(DB_PATH)
+            df = pd.read_sql_query(
+                "SELECT review_text FROM reviews WHERE sentiment = ? ORDER BY RANDOM() LIMIT ?",
+                sample_conn, params=(sentiment, sample_size),
+            )
+            sample_conn.close()
+            counter = Counter()
+            for text in df["review_text"]:
+                words = re.findall(r"[a-zA-Z']{3,}", text.lower())
+                counter.update(w for w in words if w not in STOPWORDS)
+            return pd.DataFrame(counter.most_common(top_n), columns=["mot", "occurrences"])
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**🟢 Avis positifs**")
+            st.bar_chart(word_frequencies("positive").set_index("mot"))
+        with col2:
+            st.markdown("**🔴 Avis négatifs**")
+            st.bar_chart(word_frequencies("negative").set_index("mot"))
+
+        st.divider()
+
+        # 3. Mots les plus discriminants du modèle custom TF-IDF + LogisticRegression
+        st.subheader("Mots les plus discriminants (modèle custom TF-IDF + LogReg)")
+        model_path = Path("models/tfidf_logreg.joblib")
+        vectorizer_path = Path("models/tfidf_vectorizer.joblib")
+        if model_path.exists() and vectorizer_path.exists():
+            import joblib
+
+            model = joblib.load(model_path)
+            vectorizer = joblib.load(vectorizer_path)
+            feature_names = vectorizer.get_feature_names_out()
+            coefs = model.coef_[0]
+            top_positive_idx = coefs.argsort()[-10:][::-1]
+            top_negative_idx = coefs.argsort()[:10]
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Top 10 mots → {model.classes_[1]}**")
+                st.dataframe(
+                    pd.DataFrame({"mot": feature_names[top_positive_idx], "coefficient": coefs[top_positive_idx]}),
+                    use_container_width=True, hide_index=True,
+                )
+            with col2:
+                st.markdown(f"**Top 10 mots → {model.classes_[0]}**")
+                st.dataframe(
+                    pd.DataFrame({"mot": feature_names[top_negative_idx], "coefficient": coefs[top_negative_idx]}),
+                    use_container_width=True, hide_index=True,
+                )
+        else:
+            st.warning("Modèle custom non entraîné. Lancez : python -m src.model.train_model")
+
+        st.divider()
+
+        # 4. Corrélation note du film vs sentiment moyen des avis
+        st.subheader("Corrélation note du film vs sentiment moyen des avis")
+        df_corr = pd.read_sql_query(
+            """SELECT f.title, COALESCE(f.imdb_rating, f.vote_average) as note,
+                      ROUND(SUM(CASE WHEN r.sentiment='positive' THEN 1.0 ELSE 0.0 END) / COUNT(r.id) * 100, 1) as pct_positif,
+                      COUNT(r.id) as nb_avis
+               FROM films f
+               JOIN reviews r ON r.film_id = f.id
+               WHERE r.sentiment IS NOT NULL
+               GROUP BY f.id
+               HAVING nb_avis >= 3 AND note IS NOT NULL""",
+            conn,
+        )
+        if len(df_corr) >= 3:
+            correlation = df_corr["note"].corr(df_corr["pct_positif"])
+            st.metric("Coefficient de corrélation (Pearson)", f"{correlation:.3f}")
+
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.scatter(df_corr["note"], df_corr["pct_positif"], color="#4C78A8", alpha=0.7)
+            ax.set_xlabel("Note du film (TMDB — IMDB non disponible en base actuellement)")
+            ax.set_ylabel("% d'avis positifs")
+            st.pyplot(fig)
+            st.caption(f"Basé sur {len(df_corr)} films ayant au moins 3 avis liés et une note connue.")
+        else:
+            st.info("Pas assez de films avec avis liés et note connue pour calculer une corrélation.")
+
+        conn.close()
+    else:
+        st.error("Base de données introuvable.")
