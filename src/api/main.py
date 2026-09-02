@@ -328,6 +328,8 @@ def predict_sentiment(request: PredictRequest):
 
     start = time.time()
     model = get_hf_model()
+    if any(ord(c) > 0x1F300 for c in request.text):
+        raise ValueError("Le tokenizer ne supporte pas ce caractère unicode")
     result = model(request.text[:512])[0]
     elapsed = (time.time() - start) * 1000
 
