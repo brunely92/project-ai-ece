@@ -6,6 +6,7 @@ import os
 import sqlite3
 import time
 import re
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -125,6 +126,30 @@ def get_textblob_prediction(text: str) -> dict:
     sentiment = "positive" if polarity >= 0 else "negative"
     score = abs(polarity)
     return {"sentiment": sentiment, "score": round(score, 4), "model": "TextBlob"}
+
+
+_custom_model = None
+_custom_vectorizer = None
+
+
+def get_custom_model():
+    """Charge (une seule fois) le modèle custom TF-IDF + LogisticRegression entraîné
+    via `python -m src.model.train_model`."""
+    global _custom_model, _custom_vectorizer
+    if _custom_model is None:
+        model_path = Path("models/tfidf_logreg.joblib")
+        vectorizer_path = Path("models/tfidf_vectorizer.joblib")
+        if not model_path.exists() or not vectorizer_path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="Modèle custom non entraîné. Lancez : python -m src.model.train_model",
+            )
+        import joblib
+
+        _custom_model = joblib.load(model_path)
+        _custom_vectorizer = joblib.load(vectorizer_path)
+        print("[OK] Modèle custom (TF-IDF + LogisticRegression) chargé")
+    return _custom_model, _custom_vectorizer
 
 
 # ══════════════════════════════════════════
@@ -439,6 +464,41 @@ def model_info():
         "total_predictions": nb_preds,
         "measured_accuracy_pct": accuracy,
     }
+
+
+@app.post("/predict/custom", response_model=PredictResponse, tags=["IA"], dependencies=[Depends(verify_api_key)])
+def predict_custom(request: PredictRequest):
+    """Prédit le sentiment avec le modèle custom TF-IDF + LogisticRegression,
+    entraîné sur le corpus multi-sources du projet (voir src/model/train_model.py)."""
+    start = time.time()
+    model, vectorizer = get_custom_model()
+    X = vectorizer.transform([request.text])
+    sentiment = model.predict(X)[0]
+    proba = model.predict_proba(X)[0]
+    classes = list(model.classes_)
+    score = proba[classes.index(sentiment)]
+    elapsed = (time.time() - start) * 1000
+
+    return PredictResponse(
+        sentiment=sentiment,
+        score=round(float(score), 4),
+        model="tfidf_logreg_custom",
+        processing_time_ms=round(elapsed, 2),
+    )
+
+
+@app.get("/models/comparison", tags=["IA"], dependencies=[Depends(verify_api_key)])
+def models_comparison():
+    """Retourne la comparaison HuggingFace vs modèle custom vs TextBlob
+    générée par `python -m src.model.compare_models`."""
+    comparison_path = Path("reports/model_comparison.json")
+    if not comparison_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Comparaison non disponible. Lancez : python -m src.model.compare_models",
+        )
+    with open(comparison_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # ══════════════════════════════════════════

@@ -13,6 +13,7 @@ data/processed/*.csv
 .idea/
 .DS_Store
 models/
+models/*.joblib
 *.bin
 *.safetensors
 *.log

@@ -58,7 +58,7 @@ def get_db():
 page = st.sidebar.selectbox(
     "Navigation",
     ["🎯 Analyse de sentiment", "📊 Statistiques", "🔍 Recherche",
-     "🤖 Dashboard IA", "🎥 Explorer les films"],
+     "🤖 Dashboard IA", "🎥 Explorer les films", "🧪 Comparaison de modèles"],
 )
 
 # ── Page 1 : Analyse de sentiment ──
@@ -282,3 +282,30 @@ elif page == "🎥 Explorer les films":
         conn.close()
     else:
         st.error("Base de données introuvable.")
+
+# ── Page 6 : Comparaison de modèles ──
+elif page == "🧪 Comparaison de modèles":
+    st.title("🧪 Comparaison de modèles")
+    st.markdown(
+        "Comparaison entre le modèle **HuggingFace DistilBERT** (pré-entraîné), un modèle "
+        "**custom TF-IDF + Régression Logistique** (entraîné sur nos données) et **TextBlob** (lexical)."
+    )
+
+    comparison = api_call("GET", "/models/comparison")
+    if comparison:
+        models_data = comparison["models"]
+        df_compare = pd.DataFrame(models_data).T
+        df_compare.index.name = "Modèle"
+
+        st.caption(f"Échantillon : {comparison['sample_size']} avis — généré le {comparison['generated_at'][:19]}")
+        st.dataframe(df_compare, use_container_width=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Accuracy par modèle")
+            st.bar_chart(df_compare["accuracy"])
+        with col2:
+            st.subheader("Latence moyenne (ms/avis)")
+            st.bar_chart(df_compare["avg_latency_ms"])
+    else:
+        st.warning("Comparaison indisponible. Lancez : python -m src.model.compare_models")

@@ -25,6 +25,12 @@ HAS_MODEL = (
 )
 requires_model = pytest.mark.skipif(not HAS_MODEL, reason="transformers/torch non installés (CI allégée)")
 
+HAS_SKLEARN = (
+    importlib.util.find_spec("sklearn") is not None
+    and importlib.util.find_spec("joblib") is not None
+)
+requires_sklearn = pytest.mark.skipif(not HAS_SKLEARN, reason="scikit-learn/joblib non installés (CI allégée)")
+
 
 # ── Système ──
 
@@ -256,3 +262,38 @@ class TestMonitoringAlerts:
         data = r.json()
         assert "active_alerts_count" in data
         assert "alerts" in data
+
+
+# ── Modèle custom TF-IDF + LogisticRegression ──
+
+@requires_sklearn
+class TestPredictCustom:
+    def test_predict_custom_valid(self):
+        r = client.post("/predict/custom", json={"text": "This movie was absolutely fantastic!"}, headers=HEADERS)
+        assert r.status_code in (200, 503)
+        if r.status_code == 200:
+            data = r.json()
+            assert data["sentiment"] in ("positive", "negative")
+            assert 0 <= data["score"] <= 1
+
+    def test_predict_custom_too_short(self):
+        r = client.post("/predict/custom", json={"text": "no"}, headers=HEADERS)
+        assert r.status_code == 422
+
+    def test_predict_custom_requires_auth(self):
+        r = client.post("/predict/custom", json={"text": "This movie was great!"})
+        assert r.status_code == 401
+
+
+class TestModelsComparison:
+    def test_models_comparison_endpoint(self):
+        r = client.get("/models/comparison", headers=HEADERS)
+        assert r.status_code in (200, 404)
+        if r.status_code == 200:
+            data = r.json()
+            assert "models" in data
+            assert "sample_size" in data
+
+    def test_models_comparison_requires_auth(self):
+        r = client.get("/models/comparison")
+        assert r.status_code == 401
