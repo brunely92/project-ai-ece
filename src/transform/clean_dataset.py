@@ -180,7 +180,7 @@ def clean_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     df = df.drop_duplicates(subset=["review_text"])
     stats["after_dedup"] = len(df)
 
-    df = df[df["review_text"].str.len() >= 10]
+    df = df[df["review_text"].str.len() >= 20]
     stats["after_length"] = len(df)
 
     df["is_english"] = df["review_text"].apply(detect_english)

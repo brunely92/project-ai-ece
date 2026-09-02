@@ -39,7 +39,7 @@ def collect_amazon() -> pd.DataFrame:
 
     try:
         dataset = load_dataset(
-            "amazon_polarity",
+            "fancyzhx/amazon_polarity",
             split=f"train[:{SUBSET_SIZE}]",
         )
     except Exception as e:

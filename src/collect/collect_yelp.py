@@ -38,7 +38,7 @@ def collect_yelp() -> pd.DataFrame:
 
     try:
         dataset = load_dataset(
-            "yelp_polarity",
+            "fancyzhx/yelp_polarity",
             split=f"train[:{SUBSET_SIZE}]",
         )
     except Exception as e:
