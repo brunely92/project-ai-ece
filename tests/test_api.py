@@ -169,9 +169,12 @@ class TestPredict:
         assert elapsed < 5.0
 
     def test_predict_with_emojis(self):
-        """Incident (branche fix/incident-encoding) : /predict crashait (500) sur les emojis."""
+        """Non-régression (incident fix/incident-encoding) : /predict ne doit plus
+        crasher (500) sur des textes contenant des emojis."""
         r = client.post("/predict", json={"text": "This movie is great 🎬👍"}, headers=HEADERS)
-        assert r.status_code == 500
+        assert r.status_code == 200
+        data = r.json()
+        assert data["sentiment"] in ("positive", "negative")
 
 
 @requires_model

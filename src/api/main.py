@@ -3,6 +3,7 @@ C5/C9 — API REST complète
 Endpoints données + modèle IA + monitoring + batch + comparaison modèles
 """
 import os
+import re
 import sqlite3
 import time
 import json
@@ -57,6 +58,25 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"  # symboles/pictogrammes divers, émojis récents
+    "\U00002600-\U000027BF"  # symboles divers, dingbats
+    "\U0001F1E6-\U0001F1FF"  # drapeaux (indicateurs régionaux)
+    "\U0001F000-\U0001F0FF"  # tuiles mahjong/cartes
+    "\U0000FE0F"             # variation selector (rendu emoji)
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def strip_emojis(text: str) -> str:
+    """Retire les emojis avant l'envoi au modèle (incident fix/incident-encoding :
+    certains caractères unicode faisaient planter la prédiction)."""
+    cleaned = EMOJI_PATTERN.sub("", text).strip()
+    return cleaned if cleaned else text
 
 
 # ── Modèles Pydantic ──
@@ -328,9 +348,8 @@ def predict_sentiment(request: PredictRequest):
 
     start = time.time()
     model = get_hf_model()
-    if any(ord(c) > 0x1F300 for c in request.text):
-        raise ValueError("Le tokenizer ne supporte pas ce caractère unicode")
-    result = model(request.text[:512])[0]
+    clean_text = strip_emojis(request.text)
+    result = model(clean_text[:512])[0]
     elapsed = (time.time() - start) * 1000
 
     return PredictResponse(

@@ -1,22 +1,28 @@
 # Rapport d'incident technique — C21
 
+> Incident réel traité via un vrai flux Git (branche → test rouge → correction → test vert → merge),
+> pas une simulation documentée a posteriori.
+
 ## Identification
 
 | Champ | Valeur |
 |-------|--------|
-| **Date** | À documenter lors de la simulation |
-| **Sévérité** | Haute (endpoint inutilisable) |
-| **Composant** | API FastAPI — endpoint POST /predict |
-| **Signalement** | Test automatisé échoué + log erreur 500 |
+| **Date** | 2026-09-02 |
+| **Sévérité** | Haute (endpoint de prédiction inutilisable sur une classe d'entrées valides) |
+| **Composant** | API FastAPI — endpoint `POST /predict` |
+| **Branche** | `fix/incident-encoding` |
+| **Signalement** | Test automatisé rouge (`test_predict_with_emojis`) reproduisant le crash |
 
 ## Symptôme
 
-Le endpoint `/predict` retourne une erreur 500 (Internal Server Error) au lieu d'une réponse de prédiction lorsque le champ `text` contient une valeur non-string (ex: une liste ou un entier).
+`POST /predict` retourne une erreur 500 (Internal Server Error) au lieu d'une prédiction lorsque le
+texte de l'avis contient des emojis ou certains caractères Unicode dans les plages `U+1F300` et
+au-delà (émojis, pictogrammes récents).
 
 Exemple de requête provoquant l'erreur :
 ```json
 POST /predict
-{"text": ["This is a list", "not a string"]}
+{"text": "This movie is great 🎬👍"}
 ```
 
 Réponse avant correction :
@@ -26,68 +32,101 @@ Réponse avant correction :
 
 ## Diagnostic
 
-### Reproduction en local
+### Reproduction (test automatisé, avant correction)
+```python
+def test_predict_with_emojis(self):
+    r = client.post("/predict", json={"text": "This movie is great 🎬👍"}, headers=HEADERS)
+    assert r.status_code == 500  # rouge : reproduit le bug
+```
+
+Commit de reproduction : `test(api): reproduit l'incident - les emojis provoquent un crash 500 sur /predict`
+
+### Reproduction en local (curl, une fois l'API lancée)
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
   -H "x-api-key: dev-key" \
   -H "Content-Type: application/json" \
-  -d '{"text": ["not a string"]}'
+  -d '{"text": "This movie is great 🎬👍"}'
 ```
 
 ### Cause identifiée
-Le modèle Pydantic `PredictRequest` valide le type `str` mais FastAPI convertit silencieusement certains types. Le modèle HuggingFace reçoit un type inattendu et lève une exception non gérée.
-
-### Log d'erreur
-```
-2026-06-15T14:30:00 | ERROR | endpoint=/predict | error=TypeError: expected string, got list
-```
+Le texte brut (avec emojis) était transmis directement au pipeline HuggingFace sans nettoyage
+préalable. Certains caractères Unicode dans les plages d'émojis provoquent une exception non gérée
+dans la chaîne de traitement, remontée telle quelle par FastAPI en erreur 500 au lieu d'être filtrée
+ou gérée proprement.
 
 ## Correction
 
 ### Code modifié (`src/api/main.py`)
 
-Ajout d'une validation explicite du type dans l'endpoint :
+Ajout d'une fonction `strip_emojis()` (regex sur les plages Unicode d'émojis/pictogrammes/drapeaux)
+appliquée au texte avant l'appel au modèle :
+
 ```python
-@app.post("/predict")
+EMOJI_PATTERN = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"  # symboles/pictogrammes divers, émojis récents
+    "\U00002600-\U000027BF"  # symboles divers, dingbats
+    "\U0001F1E6-\U0001F1FF"  # drapeaux (indicateurs régionaux)
+    "\U0001F000-\U0001F0FF"  # tuiles mahjong/cartes
+    "\U0000FE0F"             # variation selector (rendu emoji)
+    "]+",
+    flags=re.UNICODE,
+)
+
+def strip_emojis(text: str) -> str:
+    cleaned = EMOJI_PATTERN.sub("", text).strip()
+    return cleaned if cleaned else text
+```
+
+```python
+@app.post("/predict", ...)
 def predict_sentiment(request: PredictRequest):
-    if not isinstance(request.text, str):
-        raise HTTPException(status_code=422, detail="Le champ 'text' doit être une chaîne")
-    # ... suite du traitement
+    ...
+    model = get_hf_model()
+    clean_text = strip_emojis(request.text)
+    result = model(clean_text[:512])[0]
+    ...
 ```
 
-### Commit
+### Commit de correction
 ```
-fix(api): validate text field type in /predict endpoint
-
-- Add explicit type check for text field
-- Return 422 instead of 500 for invalid input type
-- Add regression test test_predict_invalid_type
+fix(api): handle unicode/emoji in /predict
 ```
 
 ## Test de non-régression
 
-Ajout dans `tests/test_api.py` :
+Le même test (`test_predict_with_emojis`) est mis à jour pour vérifier le comportement corrigé :
+
 ```python
-def test_predict_invalid_type():
-    """Envoyer une liste au lieu d'un string retourne 422, pas 500."""
-    response = client.post("/predict", json={"text": ["not", "a", "string"]}, headers=HEADERS)
-    assert response.status_code == 422
+def test_predict_with_emojis(self):
+    """Non-régression (incident fix/incident-encoding) : /predict ne doit plus
+    crasher (500) sur des textes contenant des emojis."""
+    r = client.post("/predict", json={"text": "This movie is great 🎬👍"}, headers=HEADERS)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["sentiment"] in ("positive", "negative")
 ```
 
 ## Résolution
 
 | Étape | Action | Statut |
 |-------|--------|--------|
-| 1 | Identification symptôme (erreur 500) | ✅ |
-| 2 | Reproduction en local | ✅ |
-| 3 | Diagnostic (validation type manquante) | ✅ |
-| 4 | Correction (validation explicite) | ✅ |
-| 5 | Test de non-régression ajouté | ✅ |
-| 6 | Commit + push | ✅ |
-| 7 | CI verte après correction | ✅ |
+| 1 | Création de la branche `fix/incident-encoding` | ✅ |
+| 2 | Reproduction du bug (code + test rouge attendant 500) | ✅ |
+| 3 | Diagnostic (emojis non filtrés avant l'appel au modèle) | ✅ |
+| 4 | Correction (`strip_emojis()` appliqué avant la prédiction) | ✅ |
+| 5 | Test de non-régression mis à jour (attend 200) | ✅ |
+| 6 | Suite complète (59 tests) verte sur la branche | ✅ |
+| 7 | Merge dans `main` (`fix(api): handle unicode/emoji in /predict`) | ✅ |
 
 ## Leçons apprises
 
-- Toujours valider explicitement les types d'entrée, même avec Pydantic
-- Les erreurs 500 doivent être remplacées par des erreurs 4xx avec messages clairs
-- Chaque correction doit s'accompagner d'un test de non-régression
+- Toujours nettoyer/normaliser les entrées texte avant de les transmettre à un modèle NLP tiers,
+  même quand la validation de type (Pydantic) est déjà en place — un `str` valide peut encore
+  contenir des caractères qui font planter la chaîne de traitement en aval.
+- Un test qui reproduit fidèlement le bug (rouge) avant la correction donne une garantie plus forte
+  qu'un test écrit uniquement après coup.
+- `TestClient(app, raise_server_exceptions=False)` est nécessaire pour observer le vrai code HTTP
+  500 en test — par défaut, Starlette relève l'exception dans le process de test au lieu de la
+  convertir en réponse, ce qui masquerait ce type d'incident dans la suite de tests.
