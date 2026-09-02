@@ -77,6 +77,18 @@ class CompareResponse(BaseModel):
     text: str
     models: dict
 
+class WordImpact(BaseModel):
+    word: str
+    impact: float
+
+class ExplainResponse(BaseModel):
+    text: str
+    sentiment: str
+    score: float
+    top_words: list[WordImpact]
+    model: str
+    processing_time_ms: float
+
 
 # ── Modèles IA (lazy loading) ──
 
@@ -358,6 +370,77 @@ def compare_models(request: PredictRequest):
     }
 
 
+@app.post("/predict/explain", response_model=ExplainResponse, tags=["IA"], dependencies=[Depends(verify_api_key)])
+def explain_prediction(request: PredictRequest):
+    """Prédit le sentiment et identifie les 5 mots les plus influents (méthode d'occlusion :
+    on retire chaque mot un par un et on mesure l'impact sur le score de la prédiction d'origine)."""
+    start = time.time()
+    model = get_hf_model()
+    text = request.text[:512]
+    words = text.split()
+
+    base_result = model(text)[0]
+    base_sentiment = base_result["label"].lower()
+    base_score = base_result["score"]
+
+    # Limiter le nombre de mots analysés pour borner le temps de traitement
+    max_words = min(len(words), 60)
+    variants = []
+    for i in range(max_words):
+        remaining = words[:i] + words[i + 1:]
+        variants.append(" ".join(remaining) if remaining else ".")
+
+    variant_results = model(variants) if variants else []
+
+    impacts = []
+    for word, result in zip(words[:max_words], variant_results):
+        # Probabilité du label d'origine dans la variante (sans le mot retiré)
+        if result["label"].lower() == base_sentiment:
+            variant_score = result["score"]
+        else:
+            variant_score = 1 - result["score"]
+        # Impact positif = le mot soutient la prédiction d'origine
+        impacts.append({"word": word, "impact": round(base_score - variant_score, 4)})
+
+    top_words = sorted(impacts, key=lambda x: abs(x["impact"]), reverse=True)[:5]
+    elapsed = (time.time() - start) * 1000
+
+    return ExplainResponse(
+        text=text[:200],
+        sentiment=base_sentiment,
+        score=round(base_score, 4),
+        top_words=[WordImpact(**w) for w in top_words],
+        model=os.getenv("MODEL_NAME", "distilbert-base-uncased-finetuned-sst-2-english"),
+        processing_time_ms=round(elapsed, 2),
+    )
+
+
+@app.get("/model/info", tags=["IA"], dependencies=[Depends(verify_api_key)])
+def model_info():
+    """Informations sur le modèle IA et ses performances mesurées en base."""
+    conn = get_db()
+    nb_preds = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+    accuracy = None
+    if nb_preds > 0:
+        accuracy = conn.execute(
+            """SELECT ROUND(SUM(CASE WHEN r.sentiment = p.predicted_sentiment THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+               FROM reviews r JOIN predictions p ON r.id = p.review_id WHERE r.sentiment IS NOT NULL"""
+        ).fetchone()[0]
+    conn.close()
+
+    return {
+        "model_name": os.getenv("MODEL_NAME", "distilbert-base-uncased-finetuned-sst-2-english"),
+        "task": "sentiment-analysis",
+        "framework": "HuggingFace Transformers (PyTorch)",
+        "parameters": "66M",
+        "size_mb": 260,
+        "labels": ["positive", "negative"],
+        "max_tokens": 512,
+        "total_predictions": nb_preds,
+        "measured_accuracy_pct": accuracy,
+    }
+
+
 # ══════════════════════════════════════════
 # ENDPOINTS MONITORING (C20)
 # ══════════════════════════════════════════
@@ -404,4 +487,37 @@ def get_metrics():
         "min_confidence": min_conf,
         "low_confidence_count": low_conf,
         "confusion_matrix": matrix,
+    }
+
+
+@app.get("/monitoring/logs", tags=["Monitoring"], dependencies=[Depends(verify_api_key)])
+def get_logs(limit: int = Query(default=50, ge=1, le=500)):
+    """Retourne les N dernières lignes du fichier de log de l'API (logs/api.log)."""
+    log_file = Path("logs/api.log")
+    if not log_file.exists():
+        return {"count": 0, "logs": []}
+    with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+        lines = [line.strip() for line in f if line.strip()]
+    last_lines = lines[-limit:]
+    return {"count": len(last_lines), "logs": last_lines}
+
+
+@app.get("/monitoring/alerts", tags=["Monitoring"], dependencies=[Depends(verify_api_key)])
+def get_alerts():
+    """Retourne les alertes actives (latence > 1000ms, erreurs 5xx) détectées dans les logs récents."""
+    from src.api.middleware import ALERT_ENDPOINTS
+
+    log_file = Path("logs/api.log")
+    alerts = []
+    if log_file.exists():
+        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+            recent_lines = f.readlines()[-500:]
+        for line in recent_lines:
+            if "ALERTE" in line or "| ERROR |" in line:
+                alerts.append(line.strip())
+
+    return {
+        "active_alerts_count": len(alerts),
+        "alerts": alerts[-20:],
+        "error_counts_by_endpoint": ALERT_ENDPOINTS,
     }

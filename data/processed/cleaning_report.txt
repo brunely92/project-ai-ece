@@ -2,19 +2,19 @@
 RAPPORT DE NETTOYAGE DÉTAILLÉ
 ======================================================================
 
-  Lignes initiales           :       75
-  Sources initiales          : {'csv_kaggle_imdb': 50, 'scraping_imdb': 15, 'api_omdb': 10}
-  Après suppression nulls    :       75 (-0)
-  Après dédoublonnage        :       75 (-0)
-  Après filtre longueur      :       75 (-0)
-  Non-anglais supprimés      :        5
-  Après filtre langue        :       70
-  Dataset final              :       59 lignes
+  Lignes initiales           :   230173
+  Sources initiales          : {'sst2_stanford': 68221, 'csv_kaggle_imdb': 50000, 'amazon_reviews': 50000, 'yelp_reviews': 50000, 'rotten_tomatoes': 10662, 'scraping_imdb': 1280, 'api_omdb': 10}
+  Après suppression nulls    :   230173 (-0)
+  Après dédoublonnage        :   223281 (-6892)
+  Après filtre longueur      :   207449 (-15832)
+  Non-anglais supprimés      :    19203
+  Après filtre langue        :   188246
+  Dataset final              :   188190 lignes
 
-  Sources finales            : {'csv_kaggle_imdb': 46, 'scraping_imdb': 13}
-  Sentiments                 : {'positive': 33, 'negative': 26}
-  Avis labellisés            :       59
+  Sources finales            : {'amazon_reviews': 49857, 'csv_kaggle_imdb': 49566, 'yelp_reviews': 49068, 'sst2_stanford': 34312, 'rotten_tomatoes': 5023, 'scraping_imdb': 364}
+  Sentiments                 : {'negative': 94482, 'positive': 93708}
+  Avis labellisés            :   188190
   Avis non labellisés        :        0
-  Score qualité moyen        : 63.4/100
+  Score qualité moyen        : 85.5/100
   Avis basse qualité (<30)   :        0
 ======================================================================

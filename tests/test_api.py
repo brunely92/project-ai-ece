@@ -2,6 +2,9 @@
 C12/C18 — Tests automatisés de l'API (v2)
 Couvre : données, films, prédiction, batch, comparaison, monitoring, sécurité.
 """
+import importlib.util
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 import os
@@ -13,6 +16,14 @@ from src.api.main import app
 
 client = TestClient(app)
 HEADERS = {"x-api-key": "test-key"}
+
+# Le modèle IA (transformers/torch) n'est pas installé en CI (trop lourd) :
+# les tests qui appellent réellement le modèle sont marqués skip dans ce cas.
+HAS_MODEL = (
+    importlib.util.find_spec("transformers") is not None
+    and importlib.util.find_spec("torch") is not None
+)
+requires_model = pytest.mark.skipif(not HAS_MODEL, reason="transformers/torch non installés (CI allégée)")
 
 
 # ── Système ──
@@ -122,3 +133,126 @@ class TestInputValidation:
     def test_reviews_negative_offset(self):
         r = client.get("/reviews?offset=-1", headers=HEADERS)
         assert r.status_code == 422
+
+
+# ── Prédiction IA (C9) — nécessitent le modèle HuggingFace ──
+
+@requires_model
+class TestPredict:
+    def test_predict_valid(self):
+        r = client.post("/predict", json={"text": "This movie was absolutely fantastic!"}, headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["sentiment"] in ("positive", "negative")
+        assert 0 <= data["score"] <= 1
+
+    def test_predict_too_short(self):
+        r = client.post("/predict", json={"text": "no"}, headers=HEADERS)
+        assert r.status_code == 422
+
+    def test_predict_invalid_type(self):
+        """Régression C21 : une liste au lieu d'un string retourne 422, pas 500."""
+        r = client.post("/predict", json={"text": ["not", "a", "string"]}, headers=HEADERS)
+        assert r.status_code == 422
+
+    def test_predict_performance(self):
+        start = time.time()
+        r = client.post("/predict", json={"text": "A decent movie, nothing more."}, headers=HEADERS)
+        elapsed = time.time() - start
+        assert r.status_code == 200
+        assert elapsed < 5.0
+
+
+@requires_model
+class TestPredictBatch:
+    def test_batch_valid(self):
+        r = client.post(
+            "/predict/batch",
+            json={"texts": ["Great movie!", "Awful film, boring."]},
+            headers=HEADERS,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["count"] == 2
+        assert len(data["predictions"]) == 2
+
+    def test_batch_empty_list(self):
+        r = client.post("/predict/batch", json={"texts": []}, headers=HEADERS)
+        assert r.status_code == 422
+
+    def test_batch_too_many(self):
+        r = client.post("/predict/batch", json={"texts": ["ok"] * 21}, headers=HEADERS)
+        assert r.status_code == 422
+
+
+@requires_model
+class TestPredictCompare:
+    def test_compare_valid(self):
+        r = client.post("/predict/compare", json={"text": "This film was truly amazing!"}, headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        assert "huggingface_distilbert" in data["models"]
+        assert "textblob" in data["models"]
+
+    def test_compare_has_agreement_field(self):
+        r = client.post("/predict/compare", json={"text": "This film was truly amazing!"}, headers=HEADERS)
+        assert "agreement" in r.json()
+
+
+@requires_model
+class TestExplain:
+    def test_explain_valid(self):
+        r = client.post(
+            "/predict/explain",
+            json={"text": "This movie was absolutely fantastic and brilliant!"},
+            headers=HEADERS,
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["sentiment"] in ("positive", "negative")
+        assert len(data["top_words"]) <= 5
+        assert all("word" in w and "impact" in w for w in data["top_words"])
+
+    def test_explain_too_short(self):
+        r = client.post("/predict/explain", json={"text": "no"}, headers=HEADERS)
+        assert r.status_code == 422
+
+
+# ── Informations modèle (C9) — ne nécessite pas le modèle chargé ──
+
+class TestModelInfo:
+    def test_model_info_fields(self):
+        r = client.get("/model/info", headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        for field in ("model_name", "task", "total_predictions", "measured_accuracy_pct"):
+            assert field in data
+
+    def test_model_info_requires_auth(self):
+        r = client.get("/model/info")
+        assert r.status_code == 401
+
+
+# ── Monitoring avancé (C11/C20) ──
+
+class TestMonitoringLogs:
+    def test_logs_endpoint(self):
+        r = client.get("/monitoring/logs", headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        assert "logs" in data
+        assert isinstance(data["logs"], list)
+
+    def test_logs_limit_param(self):
+        r = client.get("/monitoring/logs?limit=5", headers=HEADERS)
+        assert r.status_code == 200
+        assert len(r.json()["logs"]) <= 5
+
+
+class TestMonitoringAlerts:
+    def test_alerts_endpoint(self):
+        r = client.get("/monitoring/alerts", headers=HEADERS)
+        assert r.status_code == 200
+        data = r.json()
+        assert "active_alerts_count" in data
+        assert "alerts" in data
